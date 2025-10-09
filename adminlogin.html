@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Ballot Management Login</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* CSS is embedded here for a single file solution */
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #1A2938, #0D141C); /* Darker, sophisticated gradient */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #E0E0E0; /* Lighter text for dark background */
+        }
+
+        .login-container {
+            background-color: #1F2E3D; /* Slightly lighter dark background for the card */
+            padding: 45px;
+            border-radius: 10px; /* Slightly sharper corners */
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4); /* More pronounced shadow */
+            width: 100%;
+            max-width: 420px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.08); /* Subtle border */
+        }
+
+        .logo {
+            font-size: 2.2em;
+            font-weight: 700;
+            color: #4CAF50; /* A fresh green for the logo/brand */
+            margin-bottom: 5px;
+            letter-spacing: 1px;
+        }
+
+        .tagline {
+            color: #B0B0B0;
+            margin-bottom: 30px;
+            font-size: 0.95em;
+            font-weight: 300;
+        }
+
+        h2 {
+            color: #E0E0E0;
+            margin-bottom: 25px;
+            font-weight: 600;
+            font-size: 1.6em;
+        }
+
+        .role-switch {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+            background-color: #2D3E4F; /* Darker background for the switch */
+            border-radius: 8px;
+            padding: 4px;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        .role-switch button {
+            flex: 1;
+            padding: 12px 15px;
+            border: none;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 500;
+            background-color: transparent;
+            color: #B0B0B0;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+
+        .role-switch button.active {
+            background-color: #4CAF50; /* Green for active state */
+            color: white;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            font-weight: 600;
+        }
+
+        .input-group {
+            margin-bottom: 22px;
+            text-align: left;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #B0B0B0;
+            font-weight: 400;
+            font-size: 0.95em;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid #3A4F64; /* Darker border */
+            background-color: #2D3E4F; /* Darker input background */
+            color: #E0E0E0;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 1em;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        .input-group input::placeholder {
+            color: #888;
+        }
+
+        .input-group input:focus {
+            border-color: #4CAF50; /* Green focus highlight */
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.3); /* Subtle glow */
+            outline: none;
+            background-color: #253340; /* Slightly darker on focus */
+        }
+
+        .login-button {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            background-color: #4CAF50; /* Green button */
+            color: white;
+            font-size: 1.15em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.1s, box-shadow 0.3s;
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+        }
+
+        .login-button:hover {
+            background-color: #43A047; /* Slightly darker green on hover */
+            box-shadow: 0 8px 20px rgba(76, 175, 80, 0.4);
+        }
+
+        .login-button:active {
+            transform: translateY(1px);
+            box-shadow: 0 3px 10px rgba(76, 175, 80, 0.2);
+        }
+
+        .footer-links {
+            margin-top: 25px;
+        }
+
+        .footer-links a {
+            color: #8BC34A; /* Lighter green for links */
+            text-decoration: none;
+            font-size: 0.9em;
+            margin: 0 12px;
+            transition: color 0.3s;
+            font-weight: 400;
+        }
+
+        .footer-links a:hover {
+            color: #4CAF50;
+        }
+        
+        .role-label { /* Keep this hidden as it's not needed visually */
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo">E-Ballot</div>
+        <div class="tagline">Secure Management Portal</div>
+
+        <h2>Access Account</h2>
+        
+        <form action="/login" method="POST">
+            <div class="role-switch">
+                <button type="button" class="active" onclick="setRole('Admin', this)">Administrator</button>
+                <button type="button" onclick="setRole('Officer', this)">Officer</button>
+            </div>
+
+            <input type="hidden" id="user-role" name="role" value="Admin">
+            <div id="role-display" class="role-label">Current Role: Admin</div>
+
+
+            <div class="input-group">
+                <label for="username">Username / Email</label>
+                <input type="text" id="username" name="username" placeholder="Enter your credentials" required>
+            </div>
+
+            <div class="input-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="••••••••" required>
+            </div>
+
+            <button type="submit" class="login-button">Sign In</button>
+        </form>
+
+        <div class="footer-links">
+            <a href="#">Forgot Password?</a>
+            <span style="color: #444;">|</span>
+            <a href="#">Need Help?</a>
+        </div>
+    </div>
+
+    <script>
+        function setRole(role, buttonElement) {
+            document.getElementById('user-role').value = role;
+            document.getElementById('role-display').textContent = 'Current Role: ' + role; // Still hidden by CSS
+
+            const buttons = document.querySelectorAll('.role-switch button');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            buttonElement.classList.add('active');
+        }
+    </script>
+</body>
+</html>
