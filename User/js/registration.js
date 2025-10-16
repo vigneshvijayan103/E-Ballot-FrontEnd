@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const otpInput = document.getElementById('otp');
     const passwordInput = document.getElementById('password');
     const confirmPasswordInput = document.getElementById('confirmPassword');
+    const constituencySelect = document.getElementById('constituency');
 
     const btnSendOtp = document.getElementById('btn-send-otp');
     const btnVerifyProceed = document.getElementById('btn-verify-proceed');
@@ -41,6 +42,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
         return true;
     };
+// ====== Load Constituencies ======
+    async function loadConstituencies() {
+        try {
+            const response = await fetch("https://localhost:7119/api/Constituency/all");
+            const data = await response.json();
+            const arr = Array.isArray(data) ? data : data.items ?? [];
+
+            if (!constituencySelect) return;
+
+            constituencySelect.innerHTML = `<option value="" disabled selected>Select Your Constituency</option>`;
+            arr.forEach(c => {
+                const option = document.createElement("option");
+                option.value = c.constituencyId ?? c.id;
+                option.textContent = `${c.name ?? c.constituencyName}${c.district ? " - " + c.district : ""}`;
+                constituencySelect.appendChild(option);
+            });
+        } catch (err) {
+            console.error("Failed to load constituencies:", err);
+            alert("⚠️ Could not load constituencies. Please refresh the page.");
+        }
+    }
+
+    loadConstituencies();
 
     // ====== Send OTP ======
     btnSendOtp.addEventListener('click', async () => {
@@ -105,15 +129,20 @@ registrationForm.addEventListener('submit', async (event) => {
 
     // ✅ Send DOB as YYYY-MM-DD (direct from <input type="date">)
     const payload = {
-        aadhaar: finalData.aadhaar,
-        phone: finalData.phone,
-        otp: otpInput.value.trim(),
-        sessionId: verificationSessionId,
-        name: finalData.name,
-        dob: finalData.dob, // YYYY-MM-DD
-        gender: finalData.gender,
-        password: finalData.password
-    };
+    name: finalData.name,
+    dob: finalData.dob,             // must match backend
+    gender: finalData.gender,
+    phone: String(finalData.phone).trim(),         // must match backend
+    aadhaar: finalData.aadhaar,     // must match backend
+    password: String(finalData.password), // ensure string
+    constituencyId: constituencySelect.value,
+    otp: otpInput.value.trim(),
+    sessionId: verificationSessionId
+};
+
+
+// console.log("Payload sent to backend:", payload);
+
 
     btnVerifyProceed.textContent = 'Verifying...';
     btnVerifyProceed.disabled = true;
@@ -150,3 +179,4 @@ registrationForm.addEventListener('submit', async (event) => {
 });
 
 });
+

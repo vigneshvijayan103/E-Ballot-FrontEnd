@@ -1,0 +1,210 @@
+      :root {
+            --color-primary: #0ea5e9; /* Sky-500 */
+            --color-secondary: #64748b; /* Slate-500 */
+            --color-bg-light: #f8fafc; /* Slate-50 */
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Utility Classes based on the original structure */
+        .app-shell {
+            display: flex;
+            min-height: 100vh;
+            background-color: var(--color-bg-light);
+            transition: margin-left 0.3s;
+        }
+        .sidebar {
+            width: 256px; /* md:w-64 */
+            position: fixed;
+            z-index: 50;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease-in-out;
+        }
+        @media (min-width: 768px) { /* md breakpoint */
+            .sidebar {
+                transform: translateX(0);
+                position: sticky;
+                top: 0;
+                height: 100vh;
+            }
+            .main-content-area {
+                margin-left: 256px;
+            }
+        }
+        .sidebar-open .sidebar {
+            transform: translateX(0);
+        }
+        .sidebar-open .overlay {
+            display: block;
+        }
+        .nav-link {
+            padding: 1rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: #64748b; /* Slate-500 */
+            font-weight: 500;
+            border-left: 4px solid transparent;
+            transition: all 0.2s;
+        }
+        .nav-link:hover {
+            color: #1e293b; /* Slate-800 */
+            background-color: #e2e8f0; /* Slate-200 */
+        }
+        .nav-link.active {
+            color: var(--color-primary);
+            background-color: #e0f2fe; /* Sky-100 */
+            border-left-color: var(--color-primary);
+        }
+        .kpi-card {
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            background-color: white;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+
+        /* Table Styling */
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .table-header {
+            text-align: left;
+            padding: 1rem;
+            color: #64748b;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        .table-data {
+            padding: 1rem;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.875rem;
+            color: #334155;
+        }
+        .table-row-hover:hover {
+            background-color: #f8fafc; /* Slate-50 */
+        }
+        .table-actions {
+            white-space: nowrap;
+            display: flex;
+            gap: 0.5rem;
+            justify-content: flex-end;
+        }
+
+        /* Form/Button Styling */
+        .button {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            line-height: 1.25;
+        }
+        .button-primary {
+            background-color: var(--color-primary);
+            color: white;
+        }
+        .button-primary:hover {
+            background-color: #0284c7; /* Sky-600 */
+        }
+        .button-secondary {
+            background-color: #e2e8f0; /* Slate-200 */
+            color: #1e293b; /* Slate-800 */
+        }
+        .button-secondary:hover {
+            background-color: #cbd5e1; /* Slate-300 */
+        }
+        .button-secondary-red {
+            background-color: #fee2e2; /* Red-100 */
+            color: #dc2626; /* Red-600 */
+        }
+        .button-secondary-red:hover {
+            background-color: #fecaca; /* Red-200 */
+        }
+        .button-small {
+            padding: 0.25rem 0.75rem;
+            font-size: 0.75rem;
+        }
+        .color-sky {
+            color: var(--color-primary);
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.6rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .badge-success { background-color: #d1fae5; color: #059669; } /* Green */
+        .badge-warning { background-color: #fef3c7; color: #f59e0b; } /* Amber */
+        .badge-info { background-color: #e0f2fe; color: #0ea5e9; } /* Sky */
+        .badge-neutral { background-color: #e5e7eb; color: #4b5563; } /* Gray */
+        .badge-red { background-color: #fee2e2; color: #dc2626; } /* Red */
+
+
+        /* Activity Feed */
+        .activity-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.75rem 0;
+            border-bottom: 1px dashed #e5e7eb;
+        }
+        .icon-box-small {
+            width: 2rem;
+            height: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f1f5f9;
+            border-radius: 0.5rem;
+        }
+        .icon-slate-medium {
+            width: 1rem;
+            height: 1rem;
+            filter: grayscale(100%) brightness(50%);
+        }
+        .activity-meta p {
+            font-weight: 500;
+            font-size: 0.875rem;
+            color: #334155;
+            margin: 0;
+        }
+        .activity-meta small {
+            font-size: 0.75rem;
+            color: #64748b;
+        }
+
+        /* Toast Styling */
+        #toast {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            z-index: 100;
+            background-color: #10b981; /* Emerald-500 */
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            opacity: 0;
+            transform: translateY(100%);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        #toast.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Responsive Visibility */
+        @media (max-width: 640px) { /* sm breakpoint */
+            .hide-sm { display: none !important; }
+        }
+        @media (max-width: 1024px) { /* md breakpoint */
+            .hide-md { display: none !important; }
+        }
+  
+    

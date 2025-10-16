@@ -70,6 +70,14 @@
                     <label for="confirmPassword"><i class="fas fa-lock"></i> Confirm Password:</label>
                     <input type="password" id="confirmPassword" name="confirmPassword" required placeholder="Re-enter your password">
                 </div>
+                <div class="form-group">
+                <label for="constituency"><i class="fas fa-map-marker-alt"></i> Constituency:</label>
+                <select id="constituency" name="constituencyId" required>
+                    <option value="" disabled selected>Select Your Constituency</option>
+                    <!-- Options will be dynamically populated via JS -->
+                </select>
+                    </div>
+
 
                 <div id="otp-section" class="form-group" style="display: none; border-top: 1px solid #e0e0e0; padding-top: 20px; margin-top: 20px;">
                     <label for="otp"><i class="fas fa-key"></i> Enter OTP:</label>
@@ -84,6 +92,8 @@
             </form>
         </main>
     </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 
     <script src="js/registration.js"></script>
 </body>

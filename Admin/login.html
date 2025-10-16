@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Ballot Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .login-container {
+            max-width: 400px;
+            margin: 5% auto;
+            padding: 2rem;
+            background-color: #f8fafc;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        .tab {
+            cursor: pointer;
+            padding: 0.5rem 1rem;
+            border-bottom: 2px solid transparent;
+            font-weight: 600;
+        }
+        .tab.active {
+            border-bottom-color: #3b82f6;
+            color: #3b82f6;
+        }
+        .login-section { display: none; }
+        .login-section.active { display: block; }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+
+    <div class="login-container">
+        <h2 class="text-2xl font-bold mb-6 text-center text-gray-800">E-Ballot System Login</h2>
+
+        <!-- Tabs -->
+        <div class="flex justify-center mb-6">
+            <div id="adminTab" class="tab active">Admin</div>
+            <div id="officerTab" class="tab">Election Officer</div>
+        </div>
+
+        <!-- Admin Login Form -->
+        <div id="adminLogin" class="login-section active">
+            <form id="adminLoginForm" class="space-y-4">
+                <div>
+                    <label for="adminUsername" class="block text-gray-700 font-medium mb-1">Username</label>
+                    <input type="text" id="adminUsername" placeholder="Enter username" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label for="adminPassword" class="block text-gray-700 font-medium mb-1">Password</label>
+                    <input type="password" id="adminPassword" placeholder="Enter password" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition">Login as Admin</button>
+            </form>
+        </div>
+
+        <!-- Officer Login Form -->
+        <div id="officerLogin" class="login-section">
+            <form id="officerLoginForm" class="space-y-4">
+                <div>
+                    <label for="officerUsername" class="block text-gray-700 font-medium mb-1">Username</label>
+                    <input type="text" id="officerUsername" placeholder="Enter username" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label for="officerPassword" class="block text-gray-700 font-medium mb-1">Password</label>
+                    <input type="password" id="officerPassword" placeholder="Enter password" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <button type="submit" class="w-full bg-green-600 text-white py-2 rounded-md hover:bg-green-700 transition">Login as Officer</button>
+            </form>
+        </div>
+    </div>
+
+   <script src="login.js"></script>
+</body>
+</html>
