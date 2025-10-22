@@ -7,7 +7,7 @@ const ENDPOINTS = {
     officers: `${API_BASE_URL}/ElectionOfficer`,                          // GET, POST, PUT, DELETE (assumed)
     registerOfficer: `${API_BASE_URL}/Auth/register-officer`,      // if your backend uses a separate auth endpoint for registration
     constituencies: `${API_BASE_URL}/Constituency`,              // GET, POST, PUT, DELETE
-    elections: `${API_BASE_URL}/Elections`,                        // GET, POST, PUT, DELETE
+    elections: `${API_BASE_URL}/Election`,                        // GET, POST, PUT, DELETE
     seedDemo: `${API_BASE_URL}/AdminTest/seed-demo-data`,          // POST - optional demo endpoint
     downloadReport: `${API_BASE_URL}/Reports/audit-csv`,           // GET -> CSV
     results: `${API_BASE_URL}/Results`,                            // GET results (optional)
@@ -17,6 +17,35 @@ const ENDPOINTS = {
 function getAuthHeaders() {
     const token = localStorage.getItem("jwtToken"); // same key as middleware
     return token ? { "Authorization": `Bearer ${token}` } : {};
+}
+
+
+// Open Assign Election modal for a constituency
+async function openAssignElectionModal(constituencyId) {
+    try {
+        currentAssignConstituencyId = constituencyId;
+        const select = document.getElementById("electionSelect");
+        if (select) {
+            select.innerHTML = `<option value="" selected disabled>Select an election</option>`;
+            try {
+                const response = await apiFetch(`${ENDPOINTS.elections}/all`, { method: "GET" });
+                const elections = Array.isArray(response) ? response : response.data ?? [];
+                elections.forEach(e => {
+                    const opt = document.createElement("option");
+                    opt.value = e.electionId;
+                    opt.textContent = `${e.title ?? "Untitled"} ${e.status ? `(${e.status})` : ""}`;
+                    select.appendChild(opt);
+                });
+            } catch (err) {
+                console.error("Failed to load elections for assign modal:", err);
+                showToast("Failed to load elections", { type: "error" });
+            }
+        }
+        const modal = document.getElementById("assignElectionModal");
+        openModal(modal);
+    } catch (err) {
+        console.error("openAssignElectionModal error:", err);
+    }
 }
 
 
@@ -167,7 +196,7 @@ async function loadDashboardMetrics() {
     // Expected data shape (adapt to your API):
     // { officers: 10, activeElections: 2, constituencies: 5, registeredVoters: 12000, approvedVoters: 11000, turnoutPercent: 23, approvalPercent: 91, recentActivity: [...] }
    document.getElementById("metricOfficers").textContent = data.totalOfficers || 0;
-        document.getElementById("metricActive").textContent = data.totalElections || 0;
+        document.getElementById("metricActive").textContent = data.activeElections || 0;
         document.getElementById("metricConstituencies").textContent = data.totalConstituencies || 0;
         document.getElementById("metricRegisteredVoters").textContent = data.totalRegisteredVoters || 0;
         document.getElementById("metricApprovedVoters").textContent = data.totalApprovedVoters || 0;
@@ -214,6 +243,7 @@ async function loadDashboardMetrics() {
 // ========== CONSTITUENCIES ==========
 
 const tbody = document.getElementById("constituenciesTbody");
+let currentAssignConstituencyId = null;
 
 // Attach click listener using delegation
 tbody?.addEventListener("click", (e) => {
@@ -221,12 +251,19 @@ tbody?.addEventListener("click", (e) => {
     if (!btn) return;
 
     const id = btn.getAttribute("data-id");
+
     if (btn.classList.contains("view-constituency")) {
         openConstituencyDetails(id);
-    } else if (btn.classList.contains("edit-constituency")) {
+    } 
+    else if (btn.classList.contains("edit-constituency")) {
         editConstituency(id);
-    }
+    } 
+    else if (btn.classList.contains("assign-election")) {
+        // Open modal to assign election
+        openAssignElectionModal(id);
+    } 
 });
+
 
 // Load constituencies into table
 async function loadConstituencies() {
@@ -237,17 +274,21 @@ async function loadConstituencies() {
         tbody.innerHTML = ""; // clear table
 
         arr.forEach(c => {
+            const id = c.id ?? c.constituencyId;
             const tr = document.createElement("tr");
+
             tr.innerHTML = `
                 <td class="table-data">${c.name ?? c.constituencyName}</td>
                 <td class="table-data hide-sm">${(c.district ?? "") + (c.state ? " / " + c.state : "")}</td>
                 <td class="table-data text-center">${c.registeredVoters ?? 0}</td>
                 <td class="table-data text-center">${c.assignedOfficers ?? 0}</td>
                 <td class="table-data text-right table-actions">
-                    <button data-id="${c.id ?? c.constituencyId}" class="button button-small button-secondary view-constituency">View</button>
-                    <button data-id="${c.id ?? c.constituencyId}" class="button button-small button-secondary edit-constituency">Edit</button>
+                    <button data-id="${id}" class="button button-small button-secondary view-constituency">View</button>
+                    <button data-id="${id}" class="button button-small button-secondary edit-constituency">Edit</button>
+                    <button data-id="${id}" class="button button-small button-primary assign-election">Assign Election</button>
                 </td>
             `;
+
             tbody.appendChild(tr);
         });
 
@@ -256,6 +297,7 @@ async function loadConstituencies() {
         showToast("Failed to load constituencies", { type: "error" });
     }
 }
+
 
 // ==================== VIEW CONSTITUENCY DETAILS ====================
 async function openConstituencyDetails(constituencyId) {
@@ -307,6 +349,36 @@ async function openConstituencyDetails(constituencyId) {
             }
         }
 
+        // Assigned elections table
+        const tbodyElections = document.getElementById("detailsElectionsTbody");
+        if (tbodyElections) {
+            tbodyElections.innerHTML = "";
+            try {
+                const electionsResp = await apiFetch(`${ENDPOINTS.elections}/ByConstituency/${constituencyId}`, { method: "GET" });
+                const elections = Array.isArray(electionsResp) ? electionsResp : electionsResp.data ?? [];
+                if (!elections || elections.length === 0) {
+                    tbodyElections.innerHTML = `<tr><td class="table-data" colspan="5">No elections assigned</td></tr>`;
+                } else {
+                    elections.forEach(e => {
+                        const tr = document.createElement("tr");
+                        tr.innerHTML = `
+                            <td class="table-data">${e.title ?? ""}</td>
+                            <td class="table-data hide-sm">${e.status ?? ""}</td>
+                            <td class="table-data hide-md">${e.startDate ? new Date(e.startDate).toLocaleString() : ""}</td>
+                            <td class="table-data hide-md">${e.endDate ? new Date(e.endDate).toLocaleString() : ""}</td>
+                            <td class="table-data text-right">
+                                <button class="button button-small button-danger unassign-election-modal" data-constituency-id="${constituencyId}" data-election-id="${e.electionId}">Unassign</button>
+                            </td>
+                        `;
+                        tbodyElections.appendChild(tr);
+                    });
+                }
+            } catch (err) {
+                console.error("Failed to load assigned elections:", err);
+                tbodyElections.innerHTML = `<tr><td class=\"table-data\" colspan=\"5\">Failed to load elections</td></tr>`;
+            }
+        }
+
         openModal(modal);
     } catch (err) {
         console.error("Failed to load constituency details:", err);
@@ -315,6 +387,118 @@ async function openConstituencyDetails(constituencyId) {
         hideLoading();
     }
 }
+
+// Assign selected election to the constituency
+async function assignElectionToConstituency(constituencyId, electionId) {
+    try {
+        if (!constituencyId || !electionId) {
+            showToast("Select an election", { type: "error" });
+            return;
+        }
+        showLoading("Assigning election...");
+        const eid = parseInt(electionId);
+        const cid = parseInt(constituencyId);
+        if (!eid || !cid || eid <= 0 || cid <= 0) {
+            showToast("Invalid IDs for assign", { type: "error" });
+            return;
+        }
+        try {
+            // Primary: wrapped payload
+            await apiFetch(`${API_BASE_URL}/Election/AssignConstituency`, {
+                method: "POST",
+                body: { request: { electionId: eid, constituencyId: cid } }
+            });
+        } catch (err) {
+            // Fallback: raw payload (in case backend expects plain DTO)
+            if ((err?.message || "").includes("Invalid request data")) {
+                await apiFetch(`${API_BASE_URL}/Election/AssignConstituency`, {
+                    method: "POST",
+                    body: { electionId: eid, constituencyId: cid }
+                });
+            } else {
+                throw err;
+            }
+        }
+        showToast("Election assigned successfully");
+        closeModal(document.getElementById("assignElectionModal"));
+        currentAssignConstituencyId = null;
+        await loadConstituencies();
+    } catch (err) {
+        console.error("assignElectionToConstituency error:", err);
+        showToast("Failed to assign election: " + (err.message ?? err), { type: "error" });
+    } finally {
+        hideLoading();
+    }
+}
+
+
+//unassign election from constituency
+
+async function unassignElectionFromConstituency(constituencyId, electionId) {
+    try {
+        showLoading("Unassigning election...");
+
+        const eid = parseInt(electionId);
+        const cid = parseInt(constituencyId);
+
+        if (!eid || !cid || eid <= 0 || cid <= 0) {
+            showToast("Invalid IDs for unassign", { type: "error" });
+            hideLoading();
+            return;
+        }
+
+        try {
+            // Primary: wrapped payload
+            await apiFetch(`${API_BASE_URL}/Election/UnassignConstituency`, {
+                method: "POST",
+                body: { request: { electionId: eid, constituencyId: cid } }
+            });
+        } catch (err) {
+            // Fallback: raw payload (in case backend expects plain DTO)
+            if ((err?.message || "").includes("Invalid request data")) {
+                await apiFetch(`${API_BASE_URL}/Election/UnassignConstituency`, {
+                    method: "POST",
+                    body: { electionId: eid, constituencyId: cid }
+                });
+            } else {
+                throw err;
+            }
+        }
+
+        showToast("Election unassigned successfully");
+        await openConstituencyDetails(constituencyId); // refresh modal
+    } catch (err) {
+        console.error("unassignElectionFromConstituency error:", err);
+        showToast("Failed to unassign election: " + (err.message ?? err), { type: "error" });
+    } finally {
+        hideLoading();
+    }
+}
+
+
+
+// Helper to delete election by id (used by inline onclick)
+async function deleteElectionById(id) {
+  try {
+    if (!confirmAction("Delete this election?")) return;
+    showLoading("Deleting election...");
+    await apiFetch(`${ENDPOINTS.elections}/${id}`, { method: "DELETE" });
+    showToast("Election deleted");
+    await loadElections();
+  } catch (err) {
+    console.error("deleteElectionById", err);
+    showToast("Failed to delete election: " + err.message, { type: "error" });
+  } finally {
+    hideLoading();
+  }
+}
+
+// Expose functions globally for inline handlers
+window.openElectionForEdit = openElectionForEdit;
+window.deleteElectionById = deleteElectionById;
+
+
+
 
 // ==================== ADD / EDIT CONSTITUENCY ====================
 
@@ -581,6 +765,8 @@ async function openOfficerModalForEdit(id) {
 
 
 
+
+
 // ----------------- Open View Modal -----------------
 async function openOfficerViewModal(officerId) {
   try {
@@ -749,50 +935,42 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 
-
-
-
 // ========== ELECTIONS ==========
-// Minimal handlers for create/update and listing
+
 async function loadElections() {
   try {
     showLoading("Loading elections...");
-    const data = await apiFetch(ENDPOINTS.elections, { method: "GET" });
-    const arr = Array.isArray(data) ? data : data.items ?? data.elections ?? [];
+
+    const response = await apiFetch(`${ENDPOINTS.elections}/all`, { method: "GET" });
+    const arr = Array.isArray(response) ? response : response.data ?? [];
+
     const tbody = $("#electionsTbody");
     if (!tbody) return;
     tbody.innerHTML = "";
+
     if (arr.length === 0) {
       tbody.innerHTML = `<tr><td class="table-data" colspan="6">No elections found</td></tr>`;
       return;
     }
+
     arr.forEach(e => {
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td class="table-data">${e.name ?? e.electionName}</td>
-        <td class="table-data hide-sm">${e.type ?? e.electionType ?? ""}</td>
+        <td class="table-data">${e.title}</td>
+        <td class="table-data hide-sm">${e.status ?? ""}</td>
         <td class="table-data hide-md">${e.startDate ? new Date(e.startDate).toLocaleString() : ""}</td>
         <td class="table-data hide-md">${e.endDate ? new Date(e.endDate).toLocaleString() : ""}</td>
         <td class="table-data">${e.isActive ? '<span class="badge badge-info">Active</span>' : '<span class="badge badge-neutral">Inactive</span>'}</td>
         <td class="table-data text-right table-actions">
-          <button data-id="${e.id ?? e.electionId}" class="button button-small button-secondary edit-election">Edit</button>
-          <button data-id="${e.id ?? e.electionId}" class="button button-small button-secondary-red delete-election">Delete</button>
+          <button data-id="${e.electionId}" class="button button-small button-secondary edit-election" onclick="return openElectionForEdit(this.dataset.id, event)">Edit</button>
+          <button data-id="${e.electionId}" class="button button-small button-secondary-red delete-election" onclick="return deleteElectionById(this.dataset.id)">Delete</button>
         </td>
       `;
       tbody.appendChild(tr);
     });
 
-    $$(".edit-election").forEach(btn => btn.addEventListener("click", async () => {
-      const id = btn.getAttribute("data-id");
-      openElectionForEdit(id);
-    }));
-    $$(".delete-election").forEach(btn => btn.addEventListener("click", async () => {
-      const id = btn.getAttribute("data-id");
-      if (!confirmAction("Delete this election?")) return;
-      await apiFetch(`${ENDPOINTS.elections}/${id}`, { method: "DELETE" });
-      showToast("Election deleted");
-      await loadElections();
-    }));
+    // Button events handled via delegation in setupUIHandlers()
+
   } catch (err) {
     console.error("loadElections error:", err);
     showToast("Failed to load elections: " + err.message, { type: "error" });
@@ -801,51 +979,97 @@ async function loadElections() {
   }
 }
 
-async function openElectionForEdit(id) {
+
+
+
+
+
+async function openElectionForEdit(id, evt) {
   try {
-    const data = await apiFetch(`${ENDPOINTS.elections}/${id}`, { method: "GET" });
-    // put values in form
-    $("#electionId").value = data.id ?? data.electionId ?? "";
-    $("#electionName").value = data.name ?? data.electionName ?? "";
-    $("#electionType").value = data.type ?? data.electionType ?? "State";
-    $("#startDate").value = formatDateTimeLocal(data.startDate ?? data.startTime);
-    $("#endDate").value = formatDateTimeLocal(data.endDate ?? data.endTime);
+    // prevent bubbling duplicates and re-entrancy
+    evt && evt.stopPropagation && evt.stopPropagation();
+    if (window._openElectionBusy) {
+      return false;
+    }
+    window._openElectionBusy = true;
+    console.log("openElectionForEdit invoked with id:", id);
+    showLoading("Loading election...");
+    const resp = await apiFetch(`${ENDPOINTS.elections}/${id}`, { method: "GET" });
+    const data = resp?.data ?? resp;
+
+    // Put values in form using correct IDs
+    $("#electionId").value = data.electionId ?? "";
+    $("#electionTitle").value = data.title ?? "";               // updated
+    $("#electionStatus").value = data.status ?? "Upcoming";    // updated
+    $("#startDate").value = formatDateTimeLocal(data.startDate);
+    $("#endDate").value = formatDateTimeLocal(data.endDate);
     $("#electionDescription").value = data.description ?? "";
-    // switch to elections section
+    $("#isActive").checked = data.isActive ?? false;
+
+    // Switch to elections section
     const electionsLink = $$(".nav-link").find(l => l.getAttribute("data-section-link") === "elections");
+    // Try nav link click
     electionsLink && electionsLink.click();
+    // Also explicitly reveal the elections section in case nav click didn't toggle
+    $$(".main-content-area > main section").forEach(sec => sec.classList.add("hidden"));
+    const electionsSection = document.getElementById("elections");
+    electionsSection && electionsSection.classList.remove("hidden");
+    // Scroll into view for visibility
+    electionsSection && electionsSection.scrollIntoView({ behavior: "smooth", block: "start" });
+    // Focus the first field to make it obvious
+    const titleEl = document.getElementById("electionTitle");
+    titleEl && titleEl.focus();
+
   } catch (err) {
     console.error("openElectionForEdit", err);
     showToast("Failed to open election", { type: "error" });
+  } finally {
+    hideLoading();
+    // release guard shortly after UI updates
+    setTimeout(() => { window._openElectionBusy = false; }, 100);
   }
+  return false;
 }
+
+
 
 async function saveElectionFromForm(e) {
   e && e.preventDefault();
   try {
     showLoading("Saving election...");
     const id = $("#electionId").value || null;
-    const payload = {
-      dto: {  // wrap inside 'dto'
-        name: $("#electionName").value.trim(),
-        type: $("#electionType").value,
-        startDate: $("#startDate").value,
-        endDate: $("#endDate").value,
-        description: $("#electionDescription").value.trim()
-      }
+
+    // Build base payload and normalize dates to ISO string format expected by backend
+    const basePayload = {
+      title: $("#electionTitle").value.trim(),
+      description: $("#electionDescription").value.trim(),
+      startDate: $("#startDate").value ? new Date($("#startDate").value).toISOString() : null,
+      endDate: $("#endDate").value ? new Date($("#endDate").value).toISOString() : null,
+      status: $("#electionStatus").value,
+      isActive: $("#isActive").checked
     };
 
-    if (!payload.dto.name) {
-      showToast("Election name is required", { type: "error" });
+    if (!basePayload.title) {
+      showToast("Election title is required", { type: "error" });
       hideLoading();
       return;
     }
 
     if (!id) {
-      await apiFetch(ENDPOINTS.elections, { method: "POST", body: payload });
-      showToast("Election created");
+      await apiFetch(`${ENDPOINTS.elections}/create`, { method: "POST", body: basePayload });
+  showToast("Election created");
     } else {
-      await apiFetch(`${ENDPOINTS.elections}/${id}`, { method: "PUT", body: payload });
+      const updatePayload = { electionId: parseInt(id), ...basePayload };
+      try {
+        await apiFetch(`${ENDPOINTS.elections}/update`, { method: "PUT", body: updatePayload });
+      } catch (err) {
+        const msg = (err?.message || "").toLowerCase();
+        if (msg.includes("method not allowed") || msg.includes("405") || msg.includes("404") || msg.includes("not found")) {
+          await apiFetch(`${ENDPOINTS.elections}/update`, { method: "POST", body: updatePayload });
+        } else {
+          throw err;
+        }
+      }
       showToast("Election updated");
     }
 
@@ -858,6 +1082,9 @@ async function saveElectionFromForm(e) {
     hideLoading();
   }
 }
+
+
+
 
 
 // ========== RESULTS / REPORT ==========
@@ -924,6 +1151,35 @@ function setupUIHandlers() {
   // Constituency details modal close
   $("#closeDetailsModalBtn")?.addEventListener("click", () => closeModal($("#constituencyDetailsModal")));
 
+  // Unassign election from modal table (delegation)
+  document.getElementById("detailsElectionsTbody")?.addEventListener("click", (e) => {
+    const btn = e.target.closest("button.unassign-election-modal");
+    if (!btn) return;
+    const constituencyId = btn.getAttribute("data-constituency-id");
+    const electionId = btn.getAttribute("data-election-id");
+    if (!constituencyId || !electionId) return;
+    if (!confirmAction("Unassign this election from the constituency?")) return;
+    unassignElectionFromConstituency(constituencyId, electionId);
+  });
+
+  // Assign Election modal buttons
+  $("#closeAssignElectionModal")?.addEventListener("click", () => {
+    closeModal($("#assignElectionModal"));
+    currentAssignConstituencyId = null;
+  });
+  $("#confirmAssignElection")?.addEventListener("click", async () => {
+    const eid = document.getElementById("electionSelect")?.value;
+    if (!currentAssignConstituencyId) {
+      showToast("No constituency selected", { type: "error" });
+      return;
+    }
+    if (!eid) {
+      showToast("Please select an election", { type: "error" });
+      return;
+    }
+    await assignElectionToConstituency(currentAssignConstituencyId, eid);
+  });
+
   // confirmation modal handlers (if you decide to use it)
   $("#modalCancelBtn")?.addEventListener("click", () => closeModal($("#confirmationModal")));
   $("#modalConfirmBtn")?.addEventListener("click", () => {
@@ -939,6 +1195,7 @@ function setupUIHandlers() {
   // election form submit
   $("#electionForm")?.addEventListener("submit", saveElectionFromForm);
   $("#resetElectionForm")?.addEventListener("click", () => $("#electionForm").reset());
+
 
   // download report
   $("#downloadReport")?.addEventListener("click", downloadAuditReport);
