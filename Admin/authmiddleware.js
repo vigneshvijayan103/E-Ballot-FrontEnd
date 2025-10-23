@@ -7,7 +7,7 @@
     let requiredRole = "";
 
     if (currentPage === "admindashboard.html") requiredRole = "admin";
-    else if (currentPage === "officerdashboard.html") requiredRole = "officer";
+    else if (currentPage === "electionofficer.html") requiredRole = "officer";
 
     if (!token || !userRole || userRole.toLowerCase() !== requiredRole.toLowerCase()) {
         alert("Unauthorized access! Please login first.");

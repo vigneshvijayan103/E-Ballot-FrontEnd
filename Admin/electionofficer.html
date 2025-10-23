@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>E-Ballot Election Officer</title>
+  <!-- Tailwind (CDN) to match Admin look & feel -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Reuse admin styles for consistent design -->
+  <!-- If path differs in your project, adjust the href below -->
+  <link rel="stylesheet" href="admin.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+</head>
+<body class="bg-gray-100">
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay" class="fixed inset-0 bg-white bg-opacity-80 z-50 hidden items-center justify-center">
+    <div class="flex flex-col items-center">
+      <svg id="loadingSpinner" class="animate-spin h-8 w-8 text-sky-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+      <p id="loadingMessage" class="mt-3 text-slate-700 font-medium">Loading...</p>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="hidden">Message Here</div>
+
+  <div class="app-shell">
+    <!-- Sidebar -->
+    <nav id="sidebar" class="sidebar bg-white shadow-xl flex flex-col justify-between">
+      <div>
+        <div class="p-6 border-b border-slate-200">
+          <h2 class="text-2xl font-black text-slate-800">E-Ballot <span class="text-sky-500">Officer</span></h2>
+        </div>
+        <div class="py-4">
+          <a href="#" class="nav-link active" data-section-link="dashboard">
+            <img loading="lazy" alt="Dashboard Icon" class="w-5 h-5" src="https://api.iconify.design/lucide-layout-dashboard.svg">
+            <span>Dashboard</span>
+          </a>
+          <a href="#" class="nav-link" data-section-link="voters">
+            <img loading="lazy" alt="Voters Icon" class="w-5 h-5" src="https://api.iconify.design/lucide-users.svg">
+            <span>Voters</span>
+          </a>
+          <a href="#" class="nav-link" data-section-link="candidates">
+            <img loading="lazy" alt="Candidates Icon" class="w-5 h-5" src="https://api.iconify.design/lucide-user-check.svg">
+            <span>Candidates</span>
+          </a>
+          <a href="#" class="nav-link" data-section-link="constituency">
+            <img loading="lazy" alt="Constituency Icon" class="w-5 h-5" src="https://api.iconify.design/lucide-map-pin.svg">
+            <span>Constituency Ops</span>
+          </a>
+          <a href="#" class="nav-link" data-section-link="counting">
+            <img loading="lazy" alt="Counting Icon" class="w-5 h-5" src="https://api.iconify.design/lucide-hash.svg">
+            <span>Vote Counting</span>
+          </a>
+          <a href="#" class="nav-link" data-section-link="reports">
+            <img loading="lazy" alt="Reports Icon" class="w-5 h-5" src="https://api.iconify.design/lucide-bar-chart-3.svg">
+            <span>Reports</span>
+          </a>
+          <a href="#" class="nav-link" data-section-link="complaints">
+            <img loading="lazy" alt="Complaints Icon" class="w-5 h-5" src="https://api.iconify.design/lucide-alert-triangle.svg">
+            <span>Complaints</span>
+          </a>
+        </div>
+      </div>
+      <div class="p-4 border-t border-slate-200 text-xs text-slate-500">
+        <p id="currentUserId" class="truncate">Officer: N/A</p>
+      </div>
+    </nav>
+
+    <!-- Main area -->
+    <div class="flex-1 main-content-area">
+      <!-- Header -->
+      <header class="bg-white shadow-sm p-4 sticky top-0 z-40 md:ml-0">
+        <div class="flex justify-between items-center">
+          <button id="sidebarToggle" class="md:hidden p-2 rounded-lg hover:bg-slate-100">
+            <img loading="lazy" alt="Menu" class="w-6 h-6" src="https://api.iconify.design/lucide-menu.svg">
+          </button>
+          <h1 class="text-xl font-semibold text-slate-800">Election Officer</h1>
+          <div class="flex items-center gap-4">
+            <span class="text-sm text-slate-400 hidden sm:inline-block" id="welcomeUser">Welcome</span>
+            <button id="LogOut" class="button button-secondary button-small text-xs">Logout</button>
+          </div>
+        </div>
+      </header>
+
+      <main class="p-4 md:p-8">
+        <!-- Dashboard -->
+        <section id="dashboard" class="space-y-8">
+          <h2 class="text-2xl font-bold text-slate-800">Overview</h2>
+          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6">
+            <div class="kpi-card"><p class="text-slate-500 text-sm">Pending Voters</p><h3 id="kpiPendingVoters" class="text-3xl font-bold text-slate-800 mt-1">0</h3></div>
+            <div class="kpi-card"><p class="text-slate-500 text-sm">Approved Voters</p><h3 id="kpiApprovedVoters" class="text-3xl font-bold text-emerald-600 mt-1">0</h3></div>
+            <div class="kpi-card"><p class="text-slate-500 text-sm">Candidates</p><h3 id="kpiCandidates" class="text-3xl font-bold text-slate-800 mt-1">0</h3></div>
+            <div class="kpi-card"><p class="text-slate-500 text-sm">Booths</p><h3 id="kpiBooths" class="text-3xl font-bold text-sky-600 mt-1">0</h3></div>
+            <div class="kpi-card"><p class="text-slate-500 text-sm">Votes Cast</p><h3 id="kpiVotesCast" class="text-3xl font-bold text-slate-800 mt-1">0</h3></div>
+            <div class="kpi-card"><p class="text-slate-500 text-sm">Complaints</p><h3 id="kpiComplaints" class="text-3xl font-bold text-red-600 mt-1">0</h3></div>
+          </div>
+          <!-- API: GET /api/Officer/Dashboard/metrics (by officer id) -->
+        </section>
+
+        <!-- Voters Management -->
+        <section id="voters" class="space-y-6 hidden">
+          <div class="flex justify-between items-center">
+            <h2 class="text-2xl font-bold text-slate-800">Voter Management</h2>
+            <div class="flex gap-2">
+              <input id="voterSearch" placeholder="Search by Name/Aadhaar" class="p-2 border rounded" />
+              <button id="refreshVoters" class="button button-secondary">Refresh</button>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="overflow-x-auto">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th class="table-header">Name</th>
+                    <th class="table-header hide-sm">Aadhaar</th>
+                    <th class="table-header hide-sm">Age</th>
+                    <th class="table-header hide-md">Constituency</th>
+                    <th class="table-header">Status</th>
+                    <th class="table-header text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="votersTbody"></tbody>
+              </table>
+            </div>
+          </div>
+          <!-- API: GET /api/Voter/pending?constituencyId= & GET /api/Voter/search?q=  -->
+          <!-- API(Approve): POST /api/Voter/approve { voterId }  -->
+          <!-- API(Reject): POST /api/Voter/reject { voterId, reason }  -->
+        </section>
+
+        <!-- Candidate Management -->
+        <section id="candidates" class="space-y-6 hidden">
+          <div class="flex justify-between items-center">
+            <h2 class="text-2xl font-bold text-slate-800">Candidate Management</h2>
+            <button id="showCandidateModal" class="button button-primary">Register Candidate</button>
+          </div>
+          <div class="kpi-card">
+            <div class="overflow-x-auto">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th class="table-header">Name</th>
+                    <th class="table-header hide-sm">Party</th>
+                    <th class="table-header">Constituency</th>
+                    <th class="table-header hide-md">Status</th>
+                    <th class="table-header text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="candidatesTbody"></tbody>
+              </table>
+            </div>
+          </div>
+          <!-- API(List): GET /api/Candidate/by-officer or /by-constituency/{id}  -->
+          <!-- API(Create): POST /api/Candidate/create  -->
+          <!-- API(Update): PUT /api/Candidate/update  -->
+          <!-- API(Verify): POST /api/Candidate/verify { candidateId }  -->
+        </section>
+
+        <!-- Candidate Modal -->
+        <div id="candidateModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50">
+          <div class="bg-white rounded-xl shadow-lg p-6 w-[500px]">
+            <h3 class="text-xl font-semibold text-slate-800 mb-4" id="candidateModalTitle">Register Candidate</h3>
+            <form id="candidateForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <input type="hidden" id="candidateId" />
+              <input id="candName" class="p-2 border rounded" placeholder="Candidate Name" required />
+              <input id="candParty" class="p-2 border rounded" placeholder="Party" required />
+              <input id="candConstituency" class="p-2 border rounded" placeholder="Constituency" required />
+              <select id="candStatus" class="p-2 border rounded">
+                <option value="Pending">Pending</option>
+                <option value="Verified">Verified</option>
+                <option value="Rejected">Rejected</option>
+              </select>
+              <div class="col-span-full flex gap-3 justify-end">
+                <button type="button" id="closeCandidateModal" class="button button-secondary">Cancel</button>
+                <button type="submit" class="button button-primary">Save</button>
+              </div>
+            </form>
+            <!-- API(Create/Update): POST/PUT /api/Candidate/... on submit -->
+          </div>
+        </div>
+
+        <!-- Constituency Operations -->
+        <section id="constituency" class="space-y-6 hidden">
+          <h2 class="text-2xl font-bold text-slate-800">Constituency Operations</h2>
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="kpi-card">
+              <h3 class="text-lg font-semibold text-slate-800 mb-4">Polling Booths</h3>
+              <div class="flex gap-2 mb-3">
+                <input id="boothName" class="p-2 border rounded flex-1" placeholder="Booth Name/Code" />
+                <button id="addBooth" class="button button-primary">Add</button>
+              </div>
+              <ul id="boothsList" class="list-disc list-inside text-slate-700"></ul>
+              <!-- API(List): GET /api/Booth/by-constituency/{id}  -->
+              <!-- API(Add): POST /api/Booth/create  -->
+              <!-- API(Delete): DELETE /api/Booth/{id}  -->
+            </div>
+            <div class="kpi-card">
+              <h3 class="text-lg font-semibold text-slate-800 mb-4">Polling Schedule</h3>
+              <label class="block mb-2 text-sm text-slate-600">Start</label>
+              <input id="pollStart" type="datetime-local" class="p-2 border rounded w-full mb-3" />
+              <label class="block mb-2 text-sm text-slate-600">End</label>
+              <input id="pollEnd" type="datetime-local" class="p-2 border rounded w-full mb-3" />
+              <button id="saveSchedule" class="button button-primary">Save Schedule</button>
+              <!-- API(Save): PUT /api/Constituency/schedule  { constituencyId, start, end } -->
+            </div>
+          </div>
+        </section>
+
+        <!-- Vote Counting & Verification -->
+        <section id="counting" class="space-y-6 hidden">
+          <h2 class="text-2xl font-bold text-slate-800">Vote Counting</h2>
+          <div class="kpi-card">
+            <div class="overflow-x-auto">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th class="table-header">Candidate</th>
+                    <th class="table-header">Votes</th>
+                    <th class="table-header text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="countTbody"></tbody>
+              </table>
+            </div>
+            <div class="flex justify-end gap-2 mt-4">
+              <button id="refreshCounts" class="button button-secondary">Refresh</button>
+              <button id="submitCounts" class="button button-primary">Submit Results</button>
+            </div>
+          </div>
+          <!-- API(Counts): GET /api/Counting/by-constituency/{id}  -->
+          <!-- API(Submit): POST /api/Counting/submit { constituencyId, results: [...] }  -->
+        </section>
+
+        <!-- Reports -->
+        <section id="reports" class="space-y-6 hidden">
+          <h2 class="text-2xl font-bold text-slate-800">Reports</h2>
+          <div class="kpi-card flex items-center justify-between">
+            <p>Download Constituency Report</p>
+            <button id="downloadOfficerReport" class="button button-primary">Download CSV</button>
+          </div>
+          <!-- API: GET /api/Reports/constituency-csv?constituencyId=  -->
+        </section>
+
+        <!-- Complaints -->
+        <section id="complaints" class="space-y-6 hidden">
+          <div class="flex justify-between items-center">
+            <h2 class="text-2xl font-bold text-slate-800">Complaints</h2>
+            <button id="refreshComplaints" class="button button-secondary">Refresh</button>
+          </div>
+          <div class="kpi-card">
+            <div class="overflow-x-auto">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th class="table-header">Ticket</th>
+                    <th class="table-header">Voter</th>
+                    <th class="table-header hide-sm">Category</th>
+                    <th class="table-header hide-md">Status</th>
+                    <th class="table-header">Updated</th>
+                    <th class="table-header text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="complaintsTbody"></tbody>
+              </table>
+            </div>
+          </div>
+          <!-- API(List): GET /api/Complaints/by-officer or /by-constituency/{id}  -->
+          <!-- API(Update): PUT /api/Complaints/update-status  -->
+        </section>
+      </main>
+
+      <footer class="p-4 md:p-8 text-center text-sm text-slate-500 border-t mt-8">
+        &copy; <span id="footerYear">2025</span> E-Ballot System. All rights reserved.
+      </footer>
+    </div>
+  </div>
+
+  <!-- Auth middleware (adjust path if needed) -->
+  <script src="../Admin/authmiddleware.js"></script>
+  <!-- Officer logic -->
+  <script src="officer.js"></script>
+</body>
+</html>

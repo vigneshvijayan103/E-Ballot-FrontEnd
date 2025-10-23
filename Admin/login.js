@@ -61,7 +61,7 @@ adminLoginForm.addEventListener("submit", async (e) => {
         if (data.role === "Admin") {
             window.location.href = "AdminDashBoard.html";
         } else if (data.role === "Officer") {
-            window.location.href = "html";
+            window.location.href = "electionofficer.html";
         } else {
             alert("Unauthorized role.");
         }
@@ -88,7 +88,7 @@ officerLoginForm.addEventListener("submit", async (e) => {
     }
 
     try {
-        const response = await fetch(`${API_BASE_URL}/Auth/officer/login`, {
+        const response = await fetch(`${API_BASE_URL}/Auth/login-user`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email, password })
@@ -113,7 +113,7 @@ officerLoginForm.addEventListener("submit", async (e) => {
         localStorage.setItem("userRole", "officer");
 
         // Redirect to Officer Dashboard
-        window.location.href = "officerDashboard.html";
+        window.location.href = "electionofficer.html";
 
     } catch (err) {
         console.error("Officer login error:", err);
