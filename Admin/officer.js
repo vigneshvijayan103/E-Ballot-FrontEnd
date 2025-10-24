@@ -1,11 +1,18 @@
 const API_BASE_URL = "https://localhost:7119/api";
+const Base_API_URL = "https://localhost:7119"; //for fetching images
+
+function getAuthHeaders() {
+    const token = localStorage.getItem("jwtToken"); // same key as middleware
+    return token ? { "Authorization": `Bearer ${token}` } : {};
+}
+
 
 // Map endpoints the Officer will call
 // Adjust paths to match your backend exactly.
 const ENDPOINTS = {
   // Dashboard metrics for officer
   // GET: /Officer/Dashboard/metrics?officerId=
-  metrics: `${API_BASE_URL}/Officer/Dashboard/metrics`,
+  metrics: `${API_BASE_URL}/OfficerDashboard/metrics`,
 
   // Voters
   // GET: /Voter/pending?constituencyId= & GET: /Voter/search?q=&constituencyId=
@@ -135,17 +142,60 @@ function setupSidebarNavigation() {
 }
 
 // ===== Dashboard Metrics =====
-async function loadDashboardMetrics(officerId, constituencyId) {
-  // API: GET /Officer/Dashboard/metrics?officerId=
-  const url = `${ENDPOINTS.metrics}?officerId=${encodeURIComponent(officerId || "")}${constituencyId ? `&constituencyId=${encodeURIComponent(constituencyId)}` : ""}`;
-  const data = await apiFetch(url, { method: "GET" });
-  const d = data?.data ?? data;
-  $("#kpiPendingVoters").textContent = d.pendingVoters ?? 0;
-  $("#kpiApprovedVoters").textContent = d.approvedVoters ?? 0;
-  $("#kpiCandidates").textContent = d.candidates ?? 0;
-  $("#kpiBooths").textContent = d.booths ?? 0;
-  $("#kpiVotesCast").textContent = d.votesCast ?? 0;
-  $("#kpiComplaints").textContent = d.complaints ?? 0;
+async function loadDashboardMetrics() {
+      const url = `https://localhost:7119/api/OfficerDashboard/metrics`; // Your endpoint
+
+      try {
+          const response = await apiFetch(url, { method: "GET" });
+          const d = (response?.data ?? response) || {};
+
+          console.log("Dashboard metrics:", d);
+
+          document.getElementById("kpiTotalVoters").textContent = d.totalVoters ?? 0;
+          document.getElementById("kpiApprovedVoters").textContent = d.approvedVoters ?? 0;
+          document.getElementById("kpiPendingVoters").textContent = d.pendingVoters ?? 0;
+          document.getElementById("kpiRejectedVoters").textContent = d.rejectedVoters ?? 0;
+          document.getElementById("kpiCandidates").textContent = d.candidates ?? 0;
+          document.getElementById("kpiVotesCast").textContent = d.votesCast ?? 0;
+          // document.getElementById("kpiComplaints").textContent = d.complaints ?? 0;
+          // document.getElementById("kpiBooths").textContent = d.booths ?? 0;
+      } catch (error) {
+          console.error("Error loading dashboard metrics:", error);
+      }
+  }
+
+
+
+
+
+// ===== Voter Management =====
+// ===== My Elections =====
+async function loadMyElections() {
+  try {
+    const resp = await apiFetch(`https://localhost:7119/api/OfficerDashboard/Myelections`, { method: "GET" });
+    const arr = Array.isArray(resp) ? resp : resp?.data ?? [];
+    const tbody = document.getElementById("myElectionsTbody");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+    if (!arr || arr.length === 0) {
+      tbody.innerHTML = '<tr><td class="table-data" colspan="4">No elections assigned</td></tr>';
+      return;
+    }
+    arr.forEach(e => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td class="table-data">${e.title ?? `Election ${e.electionId ?? ''}`}</td>
+        <td class="table-data hide-sm">${e.status ?? '—'}</td>
+        <td class="table-data hide-md">${e.startDate ? new Date(e.startDate).toLocaleString() : '—'}</td>
+        <td class="table-data hide-md">${e.endDate ? new Date(e.endDate).toLocaleString() : '—'}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  } catch (err) {
+    console.error("Error loading my elections:", err);
+    const tbody = document.getElementById("myElectionsTbody");
+    if (tbody) tbody.innerHTML = '<tr><td class="table-data" colspan="4">Failed to load elections</td></tr>';
+  }
 }
 
 // ===== Voter Management =====
@@ -238,11 +288,10 @@ async function openVoterViewModal(voterId) {
     const address = v.address ?? "—";
     const constituency = v.constituencyName ?? v.constituency ?? v.constituencyId ?? "—";
     const status = v.status ?? "—";
-    const photo = v.photoUrl ?? v.photo ?? null;
+    const rejectionReason = v.rejectionReason ?? v.rejectionReason ?? null;
 
     const title = document.getElementById("voterViewTitle");
     const details = document.getElementById("voterViewDetails");
-    const img = document.getElementById("voterPhoto");
     if (title) title.textContent = `Voter: ${name}`;
     if (details) {
       details.innerHTML = `
@@ -255,16 +304,10 @@ async function openVoterViewModal(voterId) {
         <div class="md:col-span-2"><strong>Address:</strong><br>${address}</div>
         <div><strong>Constituency:</strong><br>${constituency}</div>
         <div><strong>Status:</strong><br>${status}</div>
+        <div><strong>Rejection Reason:</strong><br>${rejectionReason || "N/A"}</div>
       `;
     }
-    if (img) {
-      if (photo) {
-        img.src = photo.startsWith("http") || photo.startsWith("data:") ? photo : `data:image/png;base64,${photo}`;
-        img.classList.remove("hidden");
-      } else {
-        img.classList.add("hidden");
-      }
-    }
+  
     const modal = document.getElementById("voterViewModal");
     modal && (modal.style.display = "flex", modal.classList.remove("hidden"));
   } catch (err) {
@@ -283,20 +326,21 @@ async function openVoterViewModal(voterId) {
 async function registerCandidate(e) {
     e?.preventDefault();
 
-    // Get form elements
+    // Collect form values
     const name = $("#candName").value.trim();
     const age = parseInt($("#candAge").value.trim());
     const gender = $("#candGender").value;
     const partyName = $("#candParty").value.trim();
-    const symbolFile = $("#candSymbol").files[0]; // file input
     const manifesto = $("#candManifesto").value.trim();
     const aadhar = $("#candAadhar").value.trim();
     const phone = $("#candPhone").value.trim();
-    const photoFile = $("#candPhoto").files[0]; // file input
     const electionId = parseInt($("#candElectionId").value);
     const isActive = $("#candIsActive").checked;
     const candidateIdRaw = $("#candidateId")?.value || "";
     const candidateId = candidateIdRaw ? parseInt(candidateIdRaw) : null;
+
+    const photoFile = $("#candPhoto").files[0];
+    const symbolFile = $("#candSymbol").files[0];
 
     // Basic validation
     if (!name || !age || !gender || !partyName || !aadhar || !phone || !electionId) {
@@ -304,67 +348,50 @@ async function registerCandidate(e) {
         return;
     }
 
-    // Convert files to Base64 strings if symbol/photo are provided
-    async function fileToBase64(file) {
-        if (!file) return null;
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result.split(",")[1]); // remove data:prefix
-            reader.onerror = err => reject(err);
-            reader.readAsDataURL(file);
-        });
-    }
+    // Create FormData
+    const formData = new FormData();
+    formData.append("Name", name);
+    formData.append("Age", age);
+    formData.append("Gender", gender);
+    formData.append("PartyName", partyName);
+    formData.append("AadharEnc", aadhar);
+    formData.append("PhoneNumberEnc", phone);
+    formData.append("ElectionId", electionId);
+    formData.append("IsActive", isActive);
 
-    const symbolBase64 = await fileToBase64(symbolFile);
-    const photoBase64 = await fileToBase64(photoFile);
+    if (manifesto) formData.append("Manifesto", manifesto);
+    if (symbolFile) formData.append("Symbol", symbolFile);
+    if (photoFile) formData.append("Photo", photoFile);
+    if (candidateId) formData.append("CandidateId", candidateId);
 
-    // Construct payload
-    const payload = {
-        name,
-        age,
-        gender,
-        partyName,
-        symbol: symbolBase64,
-        manifesto,
-        aadharEnc: aadhar,
-        phoneNumberEnc: phone,
-        photo: photoBase64,
-        electionId,
-        isActive
-    };
-    if (candidateId) payload.candidateId = candidateId;
+    const headers = getAuthHeaders();
 
     try {
-        // Create vs Update
-        if (!candidateId) {
-          // POST: /Candidate/register or /Candidate/create
-          // Using: POST `${ENDPOINTS.candidates}/register`
-          await apiFetch(`${ENDPOINTS.candidates}/register`, {
-              method: "POST",
-              body: payload
-          });
-        } else {
-          // PUT: /Candidate/update
-          await apiFetch(`${ENDPOINTS.candidates}/update`, {
-              method: "PUT",
-              body: payload
-          });
-        }
+        const url = candidateId 
+            ? `${ENDPOINTS.candidates}/update` 
+            : `${ENDPOINTS.candidates}/register`;
+
+        await fetch(url, {
+            method: candidateId ? "PUT" : "POST",
+            body: formData,
+           headers,
+            credentials: "same-origin" // Important: FormData for file upload
+            // DO NOT set Content-Type manually
+        });
 
         showToast(candidateId ? "Candidate updated successfully" : "Candidate registered successfully");
 
-        // Reset form & close modal
         $("#candidateForm").reset();
         $("#closeCandidateModal").click();
-
-        // Reload candidates table
-        loadCandidates(); // officerId is captured in JWT backend
+        loadCandidates(); // refresh table
 
     } catch (err) {
         console.error("Error registering candidate:", err);
         showToast("Failed to register candidate", { type: "error" });
     }
 }
+
+
 
 // Load elections for the officer
 async function loadElections() {
@@ -459,6 +486,7 @@ async function openCandidateViewModal(candidateId) {
     const party = c.partyName ?? c.party ?? "—";
     const manifesto = c.manifesto ?? "—";
     const aadhaar = c.aadharEnc ?? c.aadhaar ?? c.aadhar ?? "—";
+    const phoneNumber=c.phoneNumberEnc ?? c.phoneNumber ?? c.phoneNumber ?? "—";
     const constituency = c.constituencyName ?? c.constituency ?? c.constituencyId ?? "—";
     const election = c.electionTitle ?? c.electionName ?? c.election ?? c.electionId ?? "—";
     const photo = c.photoUrl ?? c.photo ?? null;
@@ -470,22 +498,29 @@ async function openCandidateViewModal(candidateId) {
     const title = document.getElementById("candidateViewTitle");
     const details = document.getElementById("candidateViewDetails");
     if (title) title.textContent = `Candidate: ${name}`;
-    if (imgPhoto) {
-      if (photo) {
-        imgPhoto.src = photo.startsWith("http") || photo.startsWith("data:") ? photo : `data:image/png;base64,${photo}`;
+   if (imgPhoto) {
+    if (photo) {
+        // If the path is relative, prefix it with the base API URL
+        imgPhoto.src = photo.startsWith("http") || photo.startsWith("data:") 
+            ? photo 
+            : `${Base_API_URL}${photo}`; // e.g. "https://localhost:7119/uploads/candidates/..."
         imgPhoto.classList.remove("hidden");
-      } else {
+    } else {
         imgPhoto.classList.add("hidden");
-      }
     }
-    if (imgSymbol) {
-      if (symbol) {
-        imgSymbol.src = symbol.startsWith("http") || symbol.startsWith("data:") ? symbol : `data:image/png;base64,${symbol}`;
+}
+
+   if (imgSymbol) {
+    if (symbol) {
+        imgSymbol.src = symbol.startsWith("http") || symbol.startsWith("data:") 
+            ? symbol 
+            : `${Base_API_URL}${symbol}`;
         imgSymbol.classList.remove("hidden");
-      } else {
+    } else {
         imgSymbol.classList.add("hidden");
-      }
     }
+}
+
     if (details) {
       details.innerHTML = `
         <div><strong>Candidate ID:</strong><br>${id}</div>
@@ -495,6 +530,7 @@ async function openCandidateViewModal(candidateId) {
         <div><strong>Party:</strong><br>${party}</div>
         <div class="col-span-2"><strong>Manifesto:</strong><br>${manifesto}</div>
         <div><strong>Aadhaar:</strong><br>${aadhaar}</div>
+        <div><strong>PhoneNumber:</strong><br>${phoneNumber}</div>
         <div><strong>Constituency:</strong><br>${constituency}</div>
         <div><strong>Election:</strong><br>${election}</div>
       `;
@@ -731,6 +767,9 @@ function setupUIHandlers() {
   // Complaints
   $("#refreshComplaints")?.addEventListener("click", () => window._officer_constituencyId && loadComplaints(window._officer_officerId, window._officer_constituencyId));
 
+  // My Elections
+  $("#refreshMyElections")?.addEventListener("click", () => loadMyElections());
+
   // Logout
   $("#LogOut")?.addEventListener("click", (e) => {
     e.preventDefault();
@@ -761,6 +800,7 @@ async function initOfficer() {
 
     await Promise.all([
       loadDashboardMetrics(officerId, constituencyId),
+      loadMyElections(),
       loadVoters(constituencyId),
       loadCandidates(officerId, constituencyId),
       loadBooths(constituencyId),

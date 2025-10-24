@@ -33,10 +33,7 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div class="md:col-span-2 grid grid-cols-2 gap-4" id="voterViewDetails"></div>
               <div>
-                <div class="p-2 rounded-lg border-2 border-sky-500/60 shadow-sm">
-                  <p class="text-sm text-slate-500 mb-2 font-semibold">Photo</p>
-                  <img id="voterPhoto" alt="Voter Photo" class="w-full h-40 object-contain rounded hidden" />
-                </div>
+                
               </div>
             </div>
           </div>
@@ -56,6 +53,10 @@
           <a href="#" class="nav-link active" data-section-link="dashboard">
             <img loading="lazy" alt="Dashboard Icon" class="w-5 h-5" src="https://api.iconify.design/lucide-layout-dashboard.svg">
             <span>Dashboard</span>
+          </a>
+          <a href="#" class="nav-link" data-section-link="myElections">
+            <img loading="lazy" alt="My Elections Icon" class="w-5 h-5" src="https://api.iconify.design/lucide-calendar-range.svg">
+            <span>My Elections</span>
           </a>
           <a href="#" class="nav-link" data-section-link="voters">
             <img loading="lazy" alt="Voters Icon" class="w-5 h-5" src="https://api.iconify.design/lucide-users.svg">
@@ -106,17 +107,63 @@
 
       <main class="p-4 md:p-8">
         <!-- Dashboard -->
-        <section id="dashboard" class="space-y-8">
-          <h2 class="text-2xl font-bold text-slate-800">Overview</h2>
-          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6">
-            <div class="kpi-card"><p class="text-slate-500 text-sm">Pending Voters</p><h3 id="kpiPendingVoters" class="text-3xl font-bold text-slate-800 mt-1">0</h3></div>
-            <div class="kpi-card"><p class="text-slate-500 text-sm">Approved Voters</p><h3 id="kpiApprovedVoters" class="text-3xl font-bold text-emerald-600 mt-1">0</h3></div>
-            <div class="kpi-card"><p class="text-slate-500 text-sm">Candidates</p><h3 id="kpiCandidates" class="text-3xl font-bold text-slate-800 mt-1">0</h3></div>
-            <div class="kpi-card"><p class="text-slate-500 text-sm">Booths</p><h3 id="kpiBooths" class="text-3xl font-bold text-sky-600 mt-1">0</h3></div>
-            <div class="kpi-card"><p class="text-slate-500 text-sm">Votes Cast</p><h3 id="kpiVotesCast" class="text-3xl font-bold text-slate-800 mt-1">0</h3></div>
-            <div class="kpi-card"><p class="text-slate-500 text-sm">Complaints</p><h3 id="kpiComplaints" class="text-3xl font-bold text-red-600 mt-1">0</h3></div>
+       <section id="dashboard" class="space-y-8">
+  <h2 class="text-2xl font-bold text-slate-800">Overview</h2>
+  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6">
+    <div class="kpi-card">
+      <p class="text-slate-500 text-sm">Total Voters</p>
+      <h3 id="kpiTotalVoters" class="text-3xl font-bold text-slate-800 mt-1">0</h3>
+    </div>
+    <div class="kpi-card">
+      <p class="text-slate-500 text-sm">Approved Voters</p>
+      <h3 id="kpiApprovedVoters" class="text-3xl font-bold text-emerald-600 mt-1">0</h3>
+    </div>
+    <div class="kpi-card">
+      <p class="text-slate-500 text-sm">Pending Voters</p>
+      <h3 id="kpiPendingVoters" class="text-3xl font-bold text-emerald-600 mt-1">0</h3>
+    </div>
+    <div class="kpi-card">
+      <p class="text-slate-500 text-sm">Rejected Voters</p>
+      <h3 id="kpiRejectedVoters" class="text-3xl font-bold text-emerald-600 mt-1">0</h3>
+    </div>
+    <div class="kpi-card">
+      <p class="text-slate-500 text-sm">Candidates</p>
+      <h3 id="kpiCandidates" class="text-3xl font-bold text-slate-800 mt-1">0</h3>
+    </div>
+    <div class="kpi-card">
+      <p class="text-slate-500 text-sm">Votes Cast</p>
+      <h3 id="kpiVotesCast" class="text-3xl font-bold text-slate-800 mt-1">0</h3>
+    </div>
+    <!-- Uncomment if needed -->
+    <!-- <div class="kpi-card">
+      <p class="text-slate-500 text-sm">Complaints</p>
+      <h3 id="kpiComplaints" class="text-3xl font-bold text-red-600 mt-1">0</h3>
+    </div> -->
+  </div>
+</section>
+
+        <!-- My Elections -->
+        <section id="myElections" class="space-y-6 hidden">
+          <div class="flex justify-between items-center">
+            <h2 class="text-2xl font-bold text-slate-800">My Elections</h2>
+            <button id="refreshMyElections" class="button button-secondary">Refresh</button>
           </div>
-          <!-- API: GET /api/Officer/Dashboard/metrics (by officer id) -->
+          <div class="kpi-card">
+            <div class="overflow-x-auto">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th class="table-header">Title</th>
+                    <th class="table-header hide-sm">Status</th>
+                    <th class="table-header hide-md">Start</th>
+                    <th class="table-header hide-md">End</th>
+                  </tr>
+                </thead>
+                <tbody id="myElectionsTbody"></tbody>
+              </table>
+            </div>
+          </div>
+          <!-- API: GET /api/OfficerDashboard/Myelections -->
         </section>
 
         <!-- Voters Management -->
