@@ -23,6 +23,25 @@
     </div>
   </div>
 
+        <!-- Voter View Modal -->
+        <div id="voterViewModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50">
+          <div class="bg-white rounded-xl shadow-lg p-6 w-[720px] max-h-[90vh] overflow-y-auto">
+            <div class="flex items-start justify-between mb-4">
+              <h3 id="voterViewTitle" class="text-xl font-semibold text-slate-800">Voter</h3>
+              <button id="closeVoterViewModal" class="button button-secondary button-small">Close</button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div class="md:col-span-2 grid grid-cols-2 gap-4" id="voterViewDetails"></div>
+              <div>
+                <div class="p-2 rounded-lg border-2 border-sky-500/60 shadow-sm">
+                  <p class="text-sm text-slate-500 mb-2 font-semibold">Photo</p>
+                  <img id="voterPhoto" alt="Voter Photo" class="w-full h-40 object-contain rounded hidden" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
   <!-- Toast -->
   <div id="toast" class="hidden">Message Here</div>
 
@@ -127,6 +146,7 @@
             </div>
           </div>
           <!-- API: GET /api/Voter/pending?constituencyId= & GET /api/Voter/search?q=  -->
+          <!-- API(View): GET /api/Voter/{id}                                  -->
           <!-- API(Approve): POST /api/Voter/approve { voterId }  -->
           <!-- API(Reject): POST /api/Voter/reject { voterId, reason }  -->
         </section>
@@ -153,32 +173,80 @@
               </table>
             </div>
           </div>
-          <!-- API(List): GET /api/Candidate/by-officer or /by-constituency/{id}  -->
-          <!-- API(Create): POST /api/Candidate/create  -->
-          <!-- API(Update): PUT /api/Candidate/update  -->
-          <!-- API(Verify): POST /api/Candidate/verify { candidateId }  -->
+          <!-- API(List):   GET   /api/Candidate/by-officer or /by-constituency/{id}  -->
+          <!-- API(View):   GET   /api/Candidate/{id}                                   -->
+          <!-- API(Create): POST  /api/Candidate/register (or /create)                  -->
+          <!-- API(Update): PUT   /api/Candidate/update                                  -->
+          <!-- API(Delete): DELETE/api/Candidate/{id}                                    -->
+          <!-- API(Verify): POST  /api/Candidate/verify { candidateId } (legacy)         -->
         </section>
 
         <!-- Candidate Modal -->
-        <div id="candidateModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50">
-          <div class="bg-white rounded-xl shadow-lg p-6 w-[500px]">
-            <h3 class="text-xl font-semibold text-slate-800 mb-4" id="candidateModalTitle">Register Candidate</h3>
-            <form id="candidateForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input type="hidden" id="candidateId" />
-              <input id="candName" class="p-2 border rounded" placeholder="Candidate Name" required />
-              <input id="candParty" class="p-2 border rounded" placeholder="Party" required />
-              <input id="candConstituency" class="p-2 border rounded" placeholder="Constituency" required />
-              <select id="candStatus" class="p-2 border rounded">
-                <option value="Pending">Pending</option>
-                <option value="Verified">Verified</option>
-                <option value="Rejected">Rejected</option>
-              </select>
-              <div class="col-span-full flex gap-3 justify-end">
-                <button type="button" id="closeCandidateModal" class="button button-secondary">Cancel</button>
-                <button type="submit" class="button button-primary">Save</button>
+     <div id="candidateModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50">
+  <div class="bg-white rounded-xl shadow-lg p-6 w-[500px] max-h-[90vh] overflow-y-auto">
+    <h3 class="text-xl font-semibold text-slate-800 mb-4" id="candidateModalTitle">Register Candidate</h3>
+
+    <form id="candidateForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <input type="hidden" id="candidateId" />
+
+      <input id="candName" type="text" class="p-2 border rounded" placeholder="Candidate Name" required />
+      <input id="candAge" type="number" min="18" class="p-2 border rounded" placeholder="Age" required />
+
+      <select id="candGender" class="p-2 border rounded" required>
+        <option value="">Select Gender</option>
+        <option value="Male">Male</option>
+        <option value="Female">Female</option>
+        <option value="Other">Other</option>
+      </select>
+
+      <input id="candParty" type="text" class="p-2 border rounded" placeholder="Party Name" required />
+
+      <select id="candElectionId" class="p-2 border rounded" required>
+        <option value="">Select Election</option>
+        <!-- Populate dynamically via JS -->
+      </select>
+
+      <textarea id="candManifesto" class="p-2 border rounded col-span-full" placeholder="Manifesto"></textarea>
+
+      <input id="candAadhar" type="text" class="p-2 border rounded" placeholder="Aadhar Number (12 digits)" maxlength="12" required />
+      <input id="candPhone" type="text" class="p-2 border rounded" placeholder="Phone Number (10 digits)" maxlength="10" required />
+
+      <input id="candSymbol" type="file" accept="image/*" class="col-span-full" />
+      <input id="candPhoto" type="file" accept="image/*" class="col-span-full" />
+
+      <label class="flex items-center gap-2 col-span-full">
+        <input id="candIsActive" type="checkbox" class="w-4 h-4">
+        <span>Active</span>
+      </label>
+
+      <div class="col-span-full flex gap-3 justify-end">
+        <button type="button" id="closeCandidateModal" class="button button-secondary">Cancel</button>
+        <button type="submit" class="button button-primary">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+        <!-- Candidate View Modal -->
+        <div id="candidateViewModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50">
+          <div class="bg-white rounded-xl shadow-lg p-6 w-[720px] max-h-[90vh] overflow-y-auto">
+            <div class="flex items-start justify-between mb-4">
+              <h3 id="candidateViewTitle" class="text-xl font-semibold text-slate-800">Candidate</h3>
+              <button id="closeCandidateViewModal" class="button button-secondary button-small">Close</button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div class="md:col-span-2 grid grid-cols-2 gap-4" id="candidateViewDetails"></div>
+              <div class="flex flex-col gap-4">
+                <div class="p-2 rounded-lg border-2 border-sky-500/60 shadow-sm">
+                  <p class="text-sm text-slate-500 mb-2 font-semibold">Photo</p>
+                  <img id="candidatePhoto" alt="Candidate Photo" class="w-full h-40 object-contain rounded hidden" />
+                </div>
+                <div class="p-2 rounded-lg border-2 border-amber-500/60 shadow-sm">
+                  <p class="text-sm text-slate-500 mb-2 font-semibold">Party Symbol</p>
+                  <img id="candidateSymbol" alt="Party Symbol" class="w-full h-32 object-contain rounded hidden" />
+                </div>
               </div>
-            </form>
-            <!-- API(Create/Update): POST/PUT /api/Candidate/... on submit -->
+            </div>
           </div>
         </div>
 

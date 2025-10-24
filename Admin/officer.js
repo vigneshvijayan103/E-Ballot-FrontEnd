@@ -11,13 +11,16 @@ const ENDPOINTS = {
   // GET: /Voter/pending?constituencyId= & GET: /Voter/search?q=&constituencyId=
   // POST: /Voter/approve  { voterId }
   // POST: /Voter/reject   { voterId, reason }
+  // GET:  /Voter/{id}     (view details)
   voters: `${API_BASE_URL}/Voter`,
 
   // Candidates
   // GET: /Candidate/by-officer?officerId=  or  /Candidate/by-constituency/{id}
-  // POST: /Candidate/create
-  // PUT:  /Candidate/update
-  // POST: /Candidate/verify { candidateId }
+  // GET: /Candidate/{id}           (view details)
+  // POST: /Candidate/create        (register)
+  // PUT:  /Candidate/update        (edit/update)
+  // DELETE: /Candidate/{id}        (delete)
+  // POST: /Candidate/verify { candidateId }  (legacy, not used in UI)
   candidates: `${API_BASE_URL}/Candidate`,
 
   // Booths
@@ -167,6 +170,7 @@ async function loadVoters(constituencyId, q = "") {
       <td class="table-data hide-md">${v.constituencyName  ?? "—"}</td>
       <td class="table-data">${v.status ?? "Pending"}</td>
       <td class="table-data text-right table-actions">
+        <button class="button button-small button-secondary" data-id="${v.voterId}" onclick="openVoterViewModal(this.dataset.id)">View</button>
         <button class="button button-small button-secondary" data-id="${v.voterId}" onclick="approveVoter(this.dataset.id)">Approve</button>
         <button class="button button-small button-secondary-red" data-id="${v.voterId}" onclick="rejectVoter(this.dataset.id)">Reject</button>
       </td>`;
@@ -217,69 +221,348 @@ async function rejectVoter(voterId) {
   }
 }
 
+// View Voter Details
+// GET: /Voter/{id}
+async function openVoterViewModal(voterId) {
+  try {
+    showLoading("Loading voter details...");
+    const resp = await apiFetch(`${ENDPOINTS.voters}/${voterId}`, { method: "GET" });
+    const v = resp?.data ?? resp;
+
+    const id = v.voterId ?? voterId;
+    const name = v.name ?? "—";
+    const aadhaar = v.aadhaar ?? v.aadhar ?? v.aadharEnc ?? "—";
+    const age = v.age ?? "—";
+    const gender = v.gender ?? "—";
+    const phone = v.phone ?? v.phoneNumber ?? v.phoneNumberEnc ?? "—";
+    const address = v.address ?? "—";
+    const constituency = v.constituencyName ?? v.constituency ?? v.constituencyId ?? "—";
+    const status = v.status ?? "—";
+    const photo = v.photoUrl ?? v.photo ?? null;
+
+    const title = document.getElementById("voterViewTitle");
+    const details = document.getElementById("voterViewDetails");
+    const img = document.getElementById("voterPhoto");
+    if (title) title.textContent = `Voter: ${name}`;
+    if (details) {
+      details.innerHTML = `
+        <div><strong>Voter ID:</strong><br>${id}</div>
+        <div><strong>Name:</strong><br>${name}</div>
+        <div><strong>Aadhaar:</strong><br>${aadhaar}</div>
+        <div><strong>Age:</strong><br>${age}</div>
+        <div><strong>Gender:</strong><br>${gender}</div>
+        <div><strong>Phone:</strong><br>${phone}</div>
+        <div class="md:col-span-2"><strong>Address:</strong><br>${address}</div>
+        <div><strong>Constituency:</strong><br>${constituency}</div>
+        <div><strong>Status:</strong><br>${status}</div>
+      `;
+    }
+    if (img) {
+      if (photo) {
+        img.src = photo.startsWith("http") || photo.startsWith("data:") ? photo : `data:image/png;base64,${photo}`;
+        img.classList.remove("hidden");
+      } else {
+        img.classList.add("hidden");
+      }
+    }
+    const modal = document.getElementById("voterViewModal");
+    modal && (modal.style.display = "flex", modal.classList.remove("hidden"));
+  } catch (err) {
+    console.error("openVoterViewModal error:", err);
+    showToast("Failed to load voter details", { type: "error" });
+  } finally {
+    hideLoading();
+  }
+}
+
+// (close handler wired in setupUIHandlers below)
 
 // ===== Candidate Management =====
-async function loadCandidates(officerId, constituencyId) {
-  // API: GET /Candidate/by-officer?officerId=  OR /Candidate/by-constituency/{id}
-  let resp;
-  if (constituencyId) resp = await apiFetch(`${ENDPOINTS.candidates}/by-constituency/${constituencyId}`, { method: "GET" });
-  else resp = await apiFetch(`${ENDPOINTS.candidates}/by-officer?officerId=${encodeURIComponent(officerId || "")}`, { method: "GET" });
-  const arr = Array.isArray(resp) ? resp : resp.data ?? [];
-  const tbody = $("#candidatesTbody");
-  tbody.innerHTML = "";
-  if (arr.length === 0) {
-    tbody.innerHTML = '<tr><td class="table-data" colspan="5">No candidates found</td></tr>';
-    return;
-  }
-  arr.forEach(c => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td class="table-data">${c.name ?? "—"}</td>
-      <td class="table-data hide-sm">${c.party ?? "—"}</td>
-      <td class="table-data">${c.constituencyName ?? c.constituencyId ?? "—"}</td>
-      <td class="table-data hide-md">${c.status ?? "Pending"}</td>
-      <td class="table-data text-right table-actions">
-        <button class="button button-small button-secondary" data-id="${c.candidateId}" onclick="verifyCandidate(this.dataset.id)">Verify</button>
-      </td>`;
-    tbody.appendChild(tr);
-  });
+
+// Register or Update Candidate
+async function registerCandidate(e) {
+    e?.preventDefault();
+
+    // Get form elements
+    const name = $("#candName").value.trim();
+    const age = parseInt($("#candAge").value.trim());
+    const gender = $("#candGender").value;
+    const partyName = $("#candParty").value.trim();
+    const symbolFile = $("#candSymbol").files[0]; // file input
+    const manifesto = $("#candManifesto").value.trim();
+    const aadhar = $("#candAadhar").value.trim();
+    const phone = $("#candPhone").value.trim();
+    const photoFile = $("#candPhoto").files[0]; // file input
+    const electionId = parseInt($("#candElectionId").value);
+    const isActive = $("#candIsActive").checked;
+    const candidateIdRaw = $("#candidateId")?.value || "";
+    const candidateId = candidateIdRaw ? parseInt(candidateIdRaw) : null;
+
+    // Basic validation
+    if (!name || !age || !gender || !partyName || !aadhar || !phone || !electionId) {
+        showToast("Please fill all required fields", { type: "error" });
+        return;
+    }
+
+    // Convert files to Base64 strings if symbol/photo are provided
+    async function fileToBase64(file) {
+        if (!file) return null;
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result.split(",")[1]); // remove data:prefix
+            reader.onerror = err => reject(err);
+            reader.readAsDataURL(file);
+        });
+    }
+
+    const symbolBase64 = await fileToBase64(symbolFile);
+    const photoBase64 = await fileToBase64(photoFile);
+
+    // Construct payload
+    const payload = {
+        name,
+        age,
+        gender,
+        partyName,
+        symbol: symbolBase64,
+        manifesto,
+        aadharEnc: aadhar,
+        phoneNumberEnc: phone,
+        photo: photoBase64,
+        electionId,
+        isActive
+    };
+    if (candidateId) payload.candidateId = candidateId;
+
+    try {
+        // Create vs Update
+        if (!candidateId) {
+          // POST: /Candidate/register or /Candidate/create
+          // Using: POST `${ENDPOINTS.candidates}/register`
+          await apiFetch(`${ENDPOINTS.candidates}/register`, {
+              method: "POST",
+              body: payload
+          });
+        } else {
+          // PUT: /Candidate/update
+          await apiFetch(`${ENDPOINTS.candidates}/update`, {
+              method: "PUT",
+              body: payload
+          });
+        }
+
+        showToast(candidateId ? "Candidate updated successfully" : "Candidate registered successfully");
+
+        // Reset form & close modal
+        $("#candidateForm").reset();
+        $("#closeCandidateModal").click();
+
+        // Reload candidates table
+        loadCandidates(); // officerId is captured in JWT backend
+
+    } catch (err) {
+        console.error("Error registering candidate:", err);
+        showToast("Failed to register candidate", { type: "error" });
+    }
 }
 
+// Load elections for the officer
+async function loadElections() {
+  const select = document.getElementById("candElectionId");
+  select.innerHTML = '<option value="">Loading elections...</option>';
+
+  try {
+    const elections = await apiFetch(`https://localhost:7119/api/OfficerDashboard/Myelections`, {
+      method: "GET"
+    });
+
+    if (!Array.isArray(elections) || elections.length === 0) {
+      select.innerHTML = '<option value="">No elections found</option>';
+      return;
+    }
+
+    select.innerHTML = '<option value="">Select Election</option>';
+    elections.forEach(e => {
+      const option = document.createElement("option");
+      option.value = e.electionId;
+      option.textContent = e.title ?? `Election ${e.electionId}`;
+      select.appendChild(option);
+    });
+  } catch (err) {
+    console.error("Error loading elections:", err);
+    select.innerHTML = '<option value="">Error loading elections</option>';
+  }
+}
+
+
+// Load candidates assigned to officer
+async function loadCandidates() {
+    try {
+        const candidates = await apiFetch(`${ENDPOINTS.candidates}/by-officer`, { method: "GET" });
+
+        const arr = Array.isArray(candidates) ? candidates : candidates.data ?? [];
+        const tbody = document.getElementById("candidatesTbody");
+        tbody.innerHTML = "";
+
+        if (arr.length === 0) {
+            tbody.innerHTML = '<tr><td class="table-data" colspan="5">No candidates found</td></tr>';
+            return;
+        }
+
+        arr.forEach(c => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td class="table-data">${c.name ?? "—"}</td>
+                <td class="table-data hide-sm">${c.party ?? c.partyName ?? "—"}</td>
+                <td class="table-data">${c.constituencyName ?? c.constituencyId ?? "—"}</td>
+                <td class="table-data hide-md">${c.status ?? "Pending"}</td>
+                <td class="table-data text-right table-actions">
+                    <button class="button button-small button-secondary" data-id="${c.candidateId}" onclick="openCandidateViewModal(this.dataset.id)">View</button>
+                    <button class="button button-small button-secondary" data-id="${c.candidateId}" onclick="openCandidateEdit(this.dataset.id)">Edit</button>
+                    <button class="button button-small button-secondary-red" data-id="${c.candidateId}" onclick="deleteCandidate(this.dataset.id)">Delete</button>
+                </td>`;
+            tbody.appendChild(tr);
+        });
+    } catch (err) {
+        console.error("Error loading candidates:", err);
+    }
+}
+
+// Verify candidate
 async function verifyCandidate(candidateId) {
-  // API: POST /Candidate/verify { candidateId }
-  await apiFetch(`${ENDPOINTS.candidates}/verify`, { method: "POST", body: { candidateId: parseInt(candidateId) } });
-  showToast("Candidate verified");
-  window._officer_officerId && loadCandidates(window._officer_officerId, window._officer_constituencyId);
+    try {
+        await apiFetch(`${ENDPOINTS.candidates}/verify`, {
+            method: "POST",
+            body: { candidateId: parseInt(candidateId) }
+        });
+        showToast("Candidate verified");
+        loadCandidates();
+    } catch (err) {
+        console.error("Error verifying candidate:", err);
+        showToast("Failed to verify candidate", { type: "error" });
+    }
 }
 
-// Candidate Modal create/update
-async function saveCandidateFromForm(e) {
-  e?.preventDefault();
-  const id = $("#candidateId").value || null;
-  const payload = {
-    candidateId: id ? parseInt(id) : undefined,
-    name: $("#candName").value.trim(),
-    party: $("#candParty").value.trim(),
-    constituency: $("#candConstituency").value.trim(),
-    status: $("#candStatus").value,
-  };
-  if (!payload.name || !payload.party || !payload.constituency) {
-    showToast("Fill all fields", { type: "error" });
-    return;
+// View Candidate Details
+// GET: /Candidate/{id}
+async function openCandidateViewModal(candidateId) {
+  try {
+    showLoading("Loading candidate details...");
+    const resp = await apiFetch(`${ENDPOINTS.candidates}/${candidateId}`, { method: "GET" });
+    const c = resp?.data ?? resp;
+
+    // Map fields safely
+    const id = c.candidateId ?? candidateId;
+    const name = c.name ?? "—";
+    const age = c.age ?? "—";
+    const gender = c.gender ?? "—";
+    const party = c.partyName ?? c.party ?? "—";
+    const manifesto = c.manifesto ?? "—";
+    const aadhaar = c.aadharEnc ?? c.aadhaar ?? c.aadhar ?? "—";
+    const constituency = c.constituencyName ?? c.constituency ?? c.constituencyId ?? "—";
+    const election = c.electionTitle ?? c.electionName ?? c.election ?? c.electionId ?? "—";
+    const photo = c.photoUrl ?? c.photo ?? null;
+    const symbol = c.symbolUrl ?? c.symbol ?? null;
+
+    // Fill modal
+    const imgPhoto = document.getElementById("candidatePhoto");
+    const imgSymbol = document.getElementById("candidateSymbol");
+    const title = document.getElementById("candidateViewTitle");
+    const details = document.getElementById("candidateViewDetails");
+    if (title) title.textContent = `Candidate: ${name}`;
+    if (imgPhoto) {
+      if (photo) {
+        imgPhoto.src = photo.startsWith("http") || photo.startsWith("data:") ? photo : `data:image/png;base64,${photo}`;
+        imgPhoto.classList.remove("hidden");
+      } else {
+        imgPhoto.classList.add("hidden");
+      }
+    }
+    if (imgSymbol) {
+      if (symbol) {
+        imgSymbol.src = symbol.startsWith("http") || symbol.startsWith("data:") ? symbol : `data:image/png;base64,${symbol}`;
+        imgSymbol.classList.remove("hidden");
+      } else {
+        imgSymbol.classList.add("hidden");
+      }
+    }
+    if (details) {
+      details.innerHTML = `
+        <div><strong>Candidate ID:</strong><br>${id}</div>
+        <div><strong>Name:</strong><br>${name}</div>
+        <div><strong>Age:</strong><br>${age}</div>
+        <div><strong>Gender:</strong><br>${gender}</div>
+        <div><strong>Party:</strong><br>${party}</div>
+        <div class="col-span-2"><strong>Manifesto:</strong><br>${manifesto}</div>
+        <div><strong>Aadhaar:</strong><br>${aadhaar}</div>
+        <div><strong>Constituency:</strong><br>${constituency}</div>
+        <div><strong>Election:</strong><br>${election}</div>
+      `;
+    }
+    const modal = document.getElementById("candidateViewModal");
+    modal && (modal.style.display = "flex", modal.classList.remove("hidden"));
+  } catch (err) {
+    console.error("openCandidateViewModal error:", err);
+    showToast("Failed to load candidate details", { type: "error" });
+  } finally {
+    hideLoading();
   }
-  if (!id) {
-    // API: POST /Candidate/create
-    await apiFetch(`${ENDPOINTS.candidates}/create`, { method: "POST", body: payload });
-    showToast("Candidate created");
-  } else {
-    // API: PUT /Candidate/update
-    await apiFetch(`${ENDPOINTS.candidates}/update`, { method: "PUT", body: payload });
-    showToast("Candidate updated");
-  }
-  $("#candidateForm").reset();
-  $("#closeCandidateModal").click();
-  window._officer_officerId && loadCandidates(window._officer_officerId, window._officer_constituencyId);
 }
+
+// Open Edit Candidate
+// GET: /Candidate/{id} (prefill), PUT: /Candidate/update (on submit)
+async function openCandidateEdit(candidateId) {
+  try {
+    showLoading("Loading candidate...");
+    const resp = await apiFetch(`${ENDPOINTS.candidates}/${candidateId}`, { method: "GET" });
+    const c = resp?.data ?? resp;
+    // Prefill form
+    document.getElementById("candidateId").value = c.candidateId ?? candidateId;
+    document.getElementById("candName").value = c.name ?? "";
+    document.getElementById("candAge").value = c.age ?? "";
+    document.getElementById("candGender").value = c.gender ?? "";
+    document.getElementById("candParty").value = c.partyName ?? c.party ?? "";
+    document.getElementById("candManifesto").value = c.manifesto ?? "";
+    document.getElementById("candAadhar").value = c.aadharEnc ?? c.aadhaar ?? c.aadhar ?? "";
+    document.getElementById("candPhone").value = c.phoneNumberEnc ?? c.phone ?? c.phoneNumber ?? "";
+    document.getElementById("candElectionId").value = c.electionId ?? "";
+    document.getElementById("candIsActive").checked = !!c.isActive;
+    document.getElementById("candidateModalTitle").textContent = "Edit Candidate";
+    const modal = document.getElementById("candidateModal");
+    modal.classList.remove("hidden");
+    modal.style.display = "flex";
+  } catch (err) {
+    console.error("openCandidateEdit error:", err);
+    showToast("Failed to load candidate for edit", { type: "error" });
+  } finally {
+    hideLoading();
+  }
+}
+
+// Delete Candidate
+// DELETE: /Candidate/{id}
+async function deleteCandidate(candidateId) {
+  try {
+    if (!confirm("Delete this candidate?")) return;
+    showLoading("Deleting candidate...");
+    await apiFetch(`${ENDPOINTS.candidates}/${candidateId}`, { method: "DELETE" });
+    showToast("Candidate deleted");
+    await loadCandidates();
+  } catch (err) {
+    console.error("deleteCandidate error:", err);
+    showToast("Failed to delete candidate", { type: "error" });
+  } finally {
+    hideLoading();
+  }
+}
+
+// Initialize
+loadElections();
+loadCandidates();
+
+// Attach form submit handler
+$("#candidateForm").addEventListener("submit", registerCandidate);
+
 
 // ===== Constituency Ops (Booths & Schedule) =====
 async function loadBooths(constituencyId) {
@@ -407,7 +690,17 @@ function setupUIHandlers() {
     modal.style.display = "none";
     modal.classList.add("hidden");
   });
-  $("#candidateForm")?.addEventListener("submit", saveCandidateFromForm);
+  $("#closeCandidateViewModal")?.addEventListener("click", () => {
+    const modal = $("#candidateViewModal");
+    modal.style.display = "none";
+    modal.classList.add("hidden");
+  });
+  $("#closeVoterViewModal")?.addEventListener("click", () => {
+    const modal = $("#voterViewModal");
+    modal.style.display = "none";
+    modal.classList.add("hidden");
+  });
+  
 
   // Voter search/refresh
   $("#voterSearch")?.addEventListener("input", (e) => {
@@ -489,3 +782,7 @@ window.approveVoter = approveVoter;
 window.rejectVoter = rejectVoter;
 window.verifyCandidate = verifyCandidate;
 window.updateComplaintStatus = updateComplaintStatus;
+window.openCandidateViewModal = openCandidateViewModal;
+window.openCandidateEdit = openCandidateEdit;
+window.deleteCandidate = deleteCandidate;
+window.openVoterViewModal = openVoterViewModal;
