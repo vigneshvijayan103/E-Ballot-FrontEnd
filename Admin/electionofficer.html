@@ -66,10 +66,10 @@
             <img loading="lazy" alt="Candidates Icon" class="w-5 h-5" src="https://api.iconify.design/lucide-user-check.svg">
             <span>Candidates</span>
           </a>
-          <a href="#" class="nav-link" data-section-link="constituency">
+          <!-- <a href="#" class="nav-link" data-section-link="constituency">
             <img loading="lazy" alt="Constituency Icon" class="w-5 h-5" src="https://api.iconify.design/lucide-map-pin.svg">
             <span>Constituency Ops</span>
-          </a>
+          </a> -->
           <a href="#" class="nav-link" data-section-link="counting">
             <img loading="lazy" alt="Counting Icon" class="w-5 h-5" src="https://api.iconify.design/lucide-hash.svg">
             <span>Vote Counting</span>
@@ -257,9 +257,10 @@
 
       <input id="candAadhar" type="text" class="p-2 border rounded" placeholder="Aadhar Number (12 digits)" maxlength="12" required />
       <input id="candPhone" type="text" class="p-2 border rounded" placeholder="Phone Number (10 digits)" maxlength="10" required />
-
-      <input id="candSymbol" type="file" accept="image/*" class="col-span-full" />
-      <input id="candPhoto" type="file" accept="image/*" class="col-span-full" />
+      Symbol
+      <input id="candSymbol" type="file" accept="image/*" class="col-span-full" placeholder="Symbol" />
+      Candidate Photo
+      <input id="candPhoto" type="file" accept="image/*" class="col-span-full" placeholder="Candidate Photo" />
 
       <label class="flex items-center gap-2 col-span-full">
         <input id="candIsActive" type="checkbox" class="w-4 h-4">

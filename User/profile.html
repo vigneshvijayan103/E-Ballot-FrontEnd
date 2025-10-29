@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Profile - E-Ballot</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+  <div class="main-card-container">
+    <header class="card-header">
+      <div class="logo-icon"><i class="fas fa-id-card"></i></div>
+      <h1>My Profile</h1>
+      <p>Review your voter details and account status.</p>
+    </header>
+
+    <main class="content-section">
+      <section class="kpi-card">
+        <div class="info-details" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;">
+          <div>
+            <p class="label">Name</p>
+            <p id="pName" class="value">—</p>
+          </div>
+          <div>
+            <p class="label">Aadhaar</p>
+            <p id="pAadhaar" class="value">—</p>
+          </div>
+         
+          <div>
+            <p class="label">Phone</p>
+            <p id="pPhone" class="value">—</p>
+          </div>
+          <div>
+            <p class="label">Constituency</p>
+            <p id="pConstituency" class="value">—</p>
+          </div>
+          <div>
+            <p class="label">Status</p>
+            <p id="pStatus" class="value">—</p>
+          </div>
+        </div>
+      </section>
+
+      <p style="text-align:center;margin-top:22px;">
+        <a href="dashboard.html" style="text-decoration:none;color:#3b82f6;">Back to Dashboard</a>
+      </p>
+    </main>
+  </div>
+
+  <script src="js/profile.js"></script>
+</body>
+</html>

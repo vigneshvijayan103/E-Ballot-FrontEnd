@@ -16,9 +16,15 @@
             <p>Welcome, <span id="voter-name">Voter Name</span>. Your secure access hub.</p>
         </header>
 
+        <div class="feature-tags" style="justify-content: center; gap: 10px;">
+            <a href="profile.html" class="feature-tag highlight" style="text-decoration:none; cursor:pointer;">
+                <i class="fas fa-id-card"></i> View My Profile
+            </a>
+        </div>
+
         <div class="feature-tags">
             <span class="feature-tag highlight"><i class="fas fa-fingerprint"></i> Authenticated</span>
-            <span class="feature-tag"><i class="fas fa-map-marker-alt"></i> Constituency: Not defined</span>
+            <span class="feature-tag"><i class="fas fa-map-marker-alt"></i> Constituency: <span id="constituency-label">Not defined</span></span>
         </div>
 
         <main class="content-section">
@@ -27,21 +33,26 @@
                 <h3 style="margin-bottom: 25px;"><span class="step-number">2</span> Election Status</h3>
                 
                 <div id="status-message" class="verification-box warning-box" style="background-color: #fff3e0; border-color: #ffcc80; color: #ff9800; text-align: center;">
-                    <i class="fas fa-exclamation-triangle verification-icon" style="color: #ff9800; font-size: 2em; margin-bottom: 10px;"></i>
-                    <p style="font-size: 1.2em; font-weight: 700; margin: 0;">VERIFICATION UNDER PROCESS</p>
-                    <p style="margin-top: 5px; font-size: 0.9em;">Your eligibility is being reviewed. You cannot vote yet.</p>
+                    <i id="status-icon" class="fas fa-hourglass-half verification-icon" style="color: #ff9800; font-size: 2em; margin-bottom: 10px;"></i>
+                    <p id="status-title" style="font-size: 1.2em; font-weight: 700; margin: 0;">Checking status…</p>
+                    <p id="status-desc" style="margin-top: 5px; font-size: 0.9em;">Please wait</p>
                 </div>
                 
                 <div class="info-details" style="display: flex; justify-content: space-around; gap: 15px; margin-top: 25px;">
                     <div style="text-align: center; padding: 10px; border-radius: 8px; flex: 1; background-color: #f8faff;">
-                        <p style="font-weight: 600; color: #3f2b96; margin-bottom: 5px;">Election Date:</p>
-                        <p id="election-date" style="font-size: 1.1em; font-weight: bold; color: #555;">Not Updated</p> 
+                        <p style="font-weight: 600; color: #3f2b96; margin-bottom: 5px;">Election</p>
+                        <p id="election-title" style="font-size: 1.1em; font-weight: bold; color: #555;">—</p> 
                     </div>
                     <div style="text-align: center; padding: 10px; border-radius: 8px; flex: 1; background-color: #f8faff;">
                         <p style="font-weight: 600; color: #3f2b96; margin-bottom: 5px;">Time Remaining:</p>
-                        <p id="time-remaining" style="font-size: 1.1em; font-weight: bold; color: #d9534f;">0 Days, 00:00:00</p>
+                        <p id="time-remaining" style="font-size: 1.1em; font-weight: bold; color: #d9534f;">—</p>
                     </div>
                 </div>
+            </section>
+
+            <section class="kpi-card" id="candidates-preview" style="margin-top: 18px;">
+              <h3 style="margin-bottom:10px;">Candidates Preview</h3>
+              <div id="candidatesPreviewList" class="candidate-list"></div>
             </section>
             
             <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;">
