@@ -3,7 +3,7 @@
 // Small helper for auth and requests
 const API_BASE_URL = 'https://localhost:7119/api';
 function getAuthHeaders() {
-  const token = localStorage.getItem('authToken');
+  const token = localStorage.getItem('token');
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 async function apiFetch(url, { method = 'GET', body = null, headers = {}, parseJson = true } = {}) {
@@ -107,7 +107,7 @@ function renderCandidates(list) {
 async function loadBallot() {
   try {
     // 1) Get voter profile
-    const me = await apiFetch(`${API_BASE_URL}/Voter/me`, { method: 'GET' });
+    const me = await apiFetch(`${API_BASE_URL}/VoterDashBoard/me`, { method: 'GET' });
     const voter = me?.data ?? me;
 
     if (!voter || voter.status !== 'Approved') {
@@ -117,15 +117,14 @@ async function loadBallot() {
 
     // 2) Find active election for voter's constituency
     const elect = await apiFetch(`${API_BASE_URL}/Election/ByConstituency/${encodeURIComponent(voter.constituencyId)}`, { method: 'GET' });
-    activeElection = elect?.data ?? elect;
+   const elections = elect?.data ?? elect;
+ activeElection = Array.isArray(elections) && elections.length > 0 ? elections[0] : null;
 
-    if (!activeElection || !activeElection.electionId) {
-      setStatus('locked', 'No Active Election', 'There is no ongoing election for your constituency.');
-      electionTitle.textContent = '—';
-      electionStart.textContent = '—';
-      electionEnd.textContent = '—';
-      return;
-    }
+if (!activeElection) {
+  console.error('No active election found.');
+  setStatus('locked', 'No Active Election', 'There is no ongoing election for your constituency.');
+  return;
+}
 
     // Populate election info
     electionTitle.textContent = activeElection.title ?? `Election ${activeElection.electionId}`;
@@ -133,7 +132,7 @@ async function loadBallot() {
     electionEnd.textContent = activeElection.endDate ? new Date(activeElection.endDate).toLocaleString() : '—';
 
     // 3) Check if user has already voted
-    const voteStatus = await apiFetch(`${API_BASE_URL}/Vote/status?electionId=${encodeURIComponent(activeElection.electionId)}&electionConstituencyId=${encodeURIComponent(activeElection.electionConstituencyId)}`, {
+    const voteStatus = await apiFetch(`${API_BASE_URL}/Voter/status?electionId=${encodeURIComponent(activeElection.electionId)}&electionConstituencyId=${encodeURIComponent(activeElection.electionConstituencyId)}`, {
   method: 'GET'
           });
 
@@ -182,9 +181,15 @@ async function submitVoteConfirmed() {
     submitVoteBtn.disabled = true;
     submitVoteBtn.textContent = 'Submitting...';
 
+    const body = {
+      electionId: activeElection.electionId,
+      electionConstituencyId: activeElection.electionConstituencyId, // ensure correct field name
+      candidateId: selectedCandidateId
+    };
+
     const resp = await apiFetch(`${API_BASE_URL}/Voting/submit`, {
       method: 'POST',
-      body: { electionId: activeElection.electionId, candidateId: selectedCandidateId }
+      body: body
     });
 
     const ok = resp?.success !== false; // treat truthy as success by default

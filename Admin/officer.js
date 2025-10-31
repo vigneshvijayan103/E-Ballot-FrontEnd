@@ -200,9 +200,7 @@ async function loadMyElections() {
 
 // ===== Voter Management =====
 async function loadVoters(constituencyId, q = "") {
-  // API: GET /Voter/pending?constituencyId= & /Voter/search?q=&constituencyId=
-  // let url = `${ENDPOINTS.voters}/pending?constituencyId=${encodeURIComponent(constituencyId || "")}`;
-  // if (q) url = `${ENDPOINTS.voters}/search?q=${encodeURIComponent(q)}${constituencyId ? `&constituencyId=${encodeURIComponent(constituencyId)}` : ""}`;
+
  const resp = await apiFetch(`${ENDPOINTS.voters}/voters`, { method: "GET" });
   const arr = Array.isArray(resp) ? resp : resp.data ?? [];
   const tbody = $("#votersTbody");
@@ -634,31 +632,171 @@ async function saveSchedule(constituencyId) {
 }
 
 // ===== Counting =====
-async function loadCounts(constituencyId) {
-  // API: GET /Counting/by-constituency/{id}
-  const resp = await apiFetch(`${ENDPOINTS.counting}/by-constituency/${constituencyId}`, { method: "GET" });
-  const arr = Array.isArray(resp) ? resp : resp.data ?? [];
-  const tbody = $("#countTbody");
-  tbody.innerHTML = "";
-  if (arr.length === 0) {
-    tbody.innerHTML = '<tr><td class="table-data" colspan="3">No records</td></tr>';
+let currentElectionId = '';
+let electionsList = [];
+
+async function populateElectionFilter() {
+  const filter = $("#electionFilter");
+  if (!filter) return;
+  
+  try {
+    const elections = await loadElections();
+    electionsList = Array.isArray(elections) ? elections : [];
+    
+    // Save current selection
+    const currentValue = filter.value;
+    
+    // Repopulate dropdown
+    filter.innerHTML = '<option value="">All Elections</option>';
+    electionsList.forEach(election => {
+      const option = document.createElement('option');
+      option.value = election.id;
+      option.textContent = `${election.title} (${election.status})`;
+      filter.appendChild(option);
+    });
+    
+    // Restore selection if possible
+    if (currentValue) {
+      filter.value = currentValue;
+    } else if (electionsList.length > 0) {
+      // Default to first active election if available
+      const activeElection = electionsList.find(e => e.status === 'Active');
+      if (activeElection) {
+        filter.value = activeElection.id;
+      }
+    }
+    
+    // Trigger change event to load counts for selected election
+    filter.dispatchEvent(new Event('change'));
+  } catch (error) {
+    console.error('Failed to load elections:', error);
+    showToast('Failed to load elections', { type: 'error' });
+  }
+}
+
+async function loadCounts(constituencyId, electionId = '') {
+  if (!constituencyId) {
+    console.error('No constituency ID provided for loading counts');
     return;
   }
-  arr.forEach(r => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td class="table-data">${r.candidateName ?? r.candidateId}</td>
-      <td class="table-data">${r.votes ?? 0}</td>
-      <td class="table-data text-right table-actions"></td>`;
-    tbody.appendChild(tr);
-  });
+
+  showLoading('Loading vote counts...');
+  try {
+    let url = `${ENDPOINTS.counting}/by-constituency/${constituencyId}`;
+    if (electionId) {
+      url += `?electionId=${encodeURIComponent(electionId)}`;
+    }
+    
+    const resp = await apiFetch(url, { method: "GET" });
+    const arr = Array.isArray(resp) ? resp : resp.data ?? [];
+    const tbody = $("#countTbody");
+    tbody.innerHTML = "";
+    
+    if (arr.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td class="table-data text-center py-4 text-slate-500" colspan="3">
+            No vote counts available${electionId ? ' for selected election' : ''}
+          </td>
+        </tr>`;
+    } else {
+      let totalVotes = 0;
+      
+      arr.forEach(r => {
+        const votes = parseInt(r.votes) || 0;
+        totalVotes += votes;
+        
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="table-data">${r.candidateName || r.candidateId || 'N/A'}</td>
+          <td class="table-data">${votes.toLocaleString()}</td>
+          <td class="table-data text-right table-actions"></td>`;
+        tbody.appendChild(tr);
+      });
+      
+      // Add total row
+      const totalRow = document.createElement("tr");
+      totalRow.className = "bg-slate-50";
+      totalRow.innerHTML = `
+        <td class="table-data font-semibold">Total</td>
+        <td class="table-data font-semibold">${totalVotes.toLocaleString()}</td>
+        <td></td>`;
+      tbody.appendChild(totalRow);
+    }
+    
+    // Update election info
+    const electionInfo = $("#electionInfo");
+    if (electionInfo) {
+      if (electionId) {
+        const election = electionsList.find(e => e.id == electionId);
+        if (election) {
+          electionInfo.textContent = `Showing results for: ${election.title}`;
+        } else {
+          electionInfo.textContent = '';
+        }
+      } else {
+        electionInfo.textContent = 'Showing results for all elections';
+      }
+    }
+    
+  } catch (error) {
+    console.error('Error loading vote counts:', error);
+    showToast('Failed to load vote counts', { type: 'error' });
+  } finally {
+    hideLoading();
+  }
 }
 
 async function submitCounts(constituencyId) {
-  // Prepare results payload from current table if needed
-  // API: POST /Counting/submit { constituencyId, results: [...] }
-  await apiFetch(`${ENDPOINTS.counting}/submit`, { method: "POST", body: { constituencyId: parseInt(constituencyId), results: [] } });
-  showToast("Results submitted");
+  const electionId = $("#electionFilter").value;
+  if (!electionId) {
+    showToast("Please select an election first", { type: 'error' });
+    return;
+  }
+
+  if (!confirm('Are you sure you want to submit the vote counts for the selected election? This action cannot be undone.')) {
+    return;
+  }
+
+  showLoading('Submitting vote counts...');
+  try {
+    // Get the current counts from the table
+    const counts = [];
+    const rows = document.querySelectorAll("#countTbody tr");
+    rows.forEach(row => {
+      const cells = row.cells;
+      if (cells.length >= 2 && cells[0].textContent !== 'Total') {
+        const candidateName = cells[0].textContent.trim();
+        const votes = parseInt(cells[1].textContent.replace(/,/g, '')) || 0;
+        if (candidateName && !isNaN(votes)) {
+          counts.push({
+            candidateName,
+            votes: votes
+          });
+        }
+      }
+    });
+
+    // API: POST /Counting/submit { electionId, constituencyId, results: [...] }
+    await apiFetch(`${ENDPOINTS.counting}/submit`, {
+      method: "POST",
+      body: {
+        electionId: parseInt(electionId),
+        constituencyId: parseInt(constituencyId),
+        results: counts
+      }
+    });
+    
+    showToast("Vote counts submitted successfully");
+    
+    // Refresh the counts to show updated data
+    loadCounts(constituencyId, electionId);
+  } catch (error) {
+    console.error('Error submitting vote counts:', error);
+    showToast(`Failed to submit vote counts: ${error.message}`, { type: 'error' });
+  } finally {
+    hideLoading();
+  }
 }
 
 // ===== Reports =====

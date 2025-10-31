@@ -327,7 +327,17 @@
 
         <!-- Vote Counting & Verification -->
         <section id="counting" class="space-y-6 hidden">
-          <h2 class="text-2xl font-bold text-slate-800">Vote Counting</h2>
+          <div class="flex justify-between items-center">
+            <h2 class="text-2xl font-bold text-slate-800">Vote Counting</h2>
+            <div class="flex gap-2">
+              <select id="electionFilter" class="p-2 border rounded">
+                <option value="">All Elections</option>
+                <!-- Will be populated by JavaScript -->
+              </select>
+              <button id="refreshCounts" class="button button-secondary">Refresh</button>
+              <button id="submitCounts" class="button button-primary">Submit Results</button>
+            </div>
+          </div>
           <div class="kpi-card">
             <div class="overflow-x-auto">
               <table class="admin-table">
@@ -341,9 +351,12 @@
                 <tbody id="countTbody"></tbody>
               </table>
             </div>
-            <div class="flex justify-end gap-2 mt-4">
-              <button id="refreshCounts" class="button button-secondary">Refresh</button>
-              <button id="submitCounts" class="button button-primary">Submit Results</button>
+            <div class="flex justify-between items-center mt-4">
+              <div id="electionInfo" class="text-sm text-slate-600"></div>
+              <div class="flex gap-2">
+                <button id="refreshCounts" class="button button-secondary">Refresh</button>
+                <button id="submitCounts" class="button button-primary">Submit Results</button>
+              </div>
             </div>
           </div>
           <!-- API(Counts): GET /api/Counting/by-constituency/{id}  -->
